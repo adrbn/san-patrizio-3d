@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Plan du corps sur rue</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -69,7 +70,11 @@ button:focus-visible,select:focus-visible,input:focus-visible{
 .room text{font-size:.44px; fill:var(--ink); text-anchor:middle; pointer-events:none;
   font-family:"Inter",sans-serif}
 .room .sub{font-size:.34px; fill:var(--ink-3)}
-.hnd{fill:var(--accent); cursor:nwse-resize}
+.hnd{fill:var(--accent); stroke:var(--paper); stroke-width:.03}
+.hnd.nw,.hnd.se{cursor:nwse-resize}
+.hnd.ne,.hnd.sw{cursor:nesw-resize}
+.hnd.n,.hnd.s{cursor:ns-resize}
+.hnd.e,.hnd.w{cursor:ew-resize}
 
 /* ── panneau de la piece ────────────────────────────────── */
 .panel{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
@@ -174,7 +179,8 @@ textarea{width:100%; min-height:180px; background:var(--paper); color:var(--ink)
   </section>
 
   <p class="note"><b>Comment s’en servir.</b> Glisser sur le vide trace une pièce&nbsp;;
-    cliquer la sélectionne&nbsp;; la poignée en bas à droite la redimensionne. Tout est
+    cliquer la sélectionne&nbsp;; les huit poignées la redimensionnent, par un coin
+    ou par un côté. Tout est
     aimanté au quart de mètre. Le plan est gardé dans ce navigateur, et
     <b>Copier le plan</b> le met dans le presse-papier&nbsp;: colle-le-moi et je le
     reprends.</p>
@@ -801,10 +807,17 @@ function draw() {
     const t2 = el("text", { x: b.x + b.w / 2, y: b.y + b.h / 2 + .46, class: "sub" });
     t2.textContent = aire(r).toFixed(1) + " m²" + (r.parts.length > 1 ? ` · ${r.parts.length} parties` : "");
     gr.append(t2);
-    if (on && sel.length === 1 && r.parts.length === 1 && !r.fixe) {
-      const p = r.parts[0];
-      gr.append(el("rect", { class: "hnd", x: p.x + p.w - .34, y: p.y + p.h - .34,
-        width: .34, height: .34 }));
+    // Huit poignees sur la boite englobante : quatre coins, quatre milieux
+    // de cote. Une piece en plusieurs morceaux se met a l'echelle en bloc.
+    if (on && sel.length === 1 && !r.fixe) {
+      const H = .30, m = H / 2;
+      for (const [k, ux, uy] of [["nw",0,0],["n",.5,0],["ne",1,0],["e",1,.5],
+                                 ["se",1,1],["s",.5,1],["sw",0,1],["w",0,.5]]) {
+        const h = el("rect", { class: "hnd " + k, width: H, height: H,
+          x: b.x + b.w * ux - m, y: b.y + b.h * uy - m });
+        h.dataset.h = k;
+        gr.append(h);
+      }
     }
     gr.dataset.i = i;
     svg.append(gr);
@@ -845,7 +858,12 @@ let act = null;
 svg.addEventListener("pointerdown", e => {
   const p = pt(e), g = e.target.closest(".room");
   svg.setPointerCapture(e.pointerId);
-  if (e.target.classList.contains("hnd") && sel.length === 1) { act = { t: "size" }; return; }
+  if (e.target.classList.contains("hnd") && sel.length === 1) {
+    const r = sel[0], b0 = boite(r);
+    act = { t: "size", h: e.target.dataset.h, b0,
+            o: r.parts.map(q => ({ x: q.x, y: q.y, w: q.w, h: q.h })) };
+    return;
+  }
   if (g) {
     const r = rooms[lvl][+g.dataset.i];
     if (e.shiftKey) { sel.includes(r) ? sel.splice(sel.indexOf(r), 1) : sel.push(r); }
@@ -862,10 +880,29 @@ svg.addEventListener("pointerdown", e => {
 svg.addEventListener("pointermove", e => {
   if (!act || !sel.length) return;
   const p = pt(e);
-  if (act.t === "new" || act.t === "size") {
+  if (act.t === "new") {
     const q = sel[0].parts[0];
     q.w = Math.max(SNAP, snap(clamp(p.x, 0, W) - q.x));
     q.h = Math.max(SNAP, snap(clamp(p.y, 0, H) - q.y));
+  } else if (act.t === "size") {
+    // On deforme la boite englobante, puis on y remet les morceaux au prorata.
+    const b0 = act.b0, k = act.h;
+    let x0 = b0.x, y0 = b0.y, x1 = b0.x + b0.w, y1 = b0.y + b0.h;
+    const mx = snap(clamp(p.x, 0, W)), my = snap(clamp(p.y, 0, H));
+    if (k.includes("w")) x0 = Math.min(mx, x1 - SNAP);
+    if (k.includes("e")) x1 = Math.max(mx, x0 + SNAP);
+    if (k.includes("n")) y0 = Math.min(my, y1 - SNAP);
+    if (k.includes("s")) y1 = Math.max(my, y0 + SNAP);
+    const sx = (x1 - x0) / (b0.w || 1), sy = (y1 - y0) / (b0.h || 1);
+    sel[0].parts.forEach((q, j) => {
+      const o = act.o[j];
+      q.x = x0 + (o.x - b0.x) * sx; q.w = Math.max(SNAP, o.w * sx);
+      q.y = y0 + (o.y - b0.y) * sy; q.h = Math.max(SNAP, o.h * sy);
+      if (sel[0].parts.length === 1) {        // un seul morceau : on recale au pas
+        q.x = snap(q.x); q.y = snap(q.y);
+        q.w = Math.max(SNAP, snap(q.w)); q.h = Math.max(SNAP, snap(q.h));
+      }
+    });
   } else if (act.t === "move") {
     const dx = snap(p.x - act.p.x), dy = snap(p.y - act.p.y);
     sel.forEach((r, i) => r.parts.forEach((q, j) => {
