@@ -398,6 +398,69 @@ body.panel-open .hint{opacity:0}
   text-transform:uppercase}
 #plan i{font-style:normal; font-size:10px; opacity:.62;
   font-variant-numeric:tabular-nums}
+/* Fenetre de rendu : la vue courante, accumulee passe apres passe. */
+.rnd{position:fixed; inset:0; z-index:20; display:flex; align-items:center;
+  justify-content:center; padding:22px; background:rgb(20 17 14/.72);
+  backdrop-filter:blur(3px)}
+.rnd[hidden]{display:none}
+.rnd__b{background:var(--surface); border:1px solid var(--rule); padding:10px;
+  box-shadow:0 24px 60px rgb(0 0 0/.3); max-width:100%; max-height:100%;
+  display:flex; flex-direction:column; gap:9px}
+.rnd__h{display:flex; align-items:center; gap:12px; padding:2px 2px 0}
+.rnd__h .grow{flex:1}
+.rnd__h span{font-size:11.5px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.rnd__h .eyebrow{margin:0}
+.rnd__h button{font:inherit; font-size:11.5px; padding:6px 11px; cursor:pointer;
+  border:1px solid var(--rule); background:var(--paper); color:var(--ink-2)}
+.rnd__h button:hover{border-color:var(--ink-3); color:var(--ink)}
+#rndX{padding:5px 9px; font-size:15px; line-height:1}
+#rndC{display:block; max-width:100%; max-height:calc(100vh - 130px);
+  width:auto; height:auto; background:var(--paper)}
+
+/* Fiche de chambre : qui l'habite, qui l'a habitée. */
+.fiche{position:absolute; right:14px; top:14px; z-index:6; width:min(330px,calc(100vw - 28px));
+  max-height:calc(100vh - 150px); overflow:auto; padding:15px 16px 16px;
+  background:var(--surface); border:1px solid var(--rule);
+  box-shadow:0 14px 40px rgb(0 0 0/.14)}
+.fiche[hidden]{display:none}
+.fiche h2{font-family:"Source Serif 4",serif; font-size:19px; font-weight:600;
+  margin:2px 0 3px; letter-spacing:-.01em}
+.fiche__m{font-size:11.5px; color:var(--ink-3); margin:0 0 12px;
+  font-variant-numeric:tabular-nums}
+.fiche__x{position:absolute; right:8px; top:7px; border:0; background:none;
+  font-size:17px; line-height:1; color:var(--ink-3); cursor:pointer; padding:4px 7px}
+.fiche__x:hover{color:var(--ink)}
+.fiche__l{list-style:none; margin:0 0 13px; padding:0; display:flex;
+  flex-direction:column; gap:9px}
+.fiche__l li{border-left:2px solid var(--rule); padding:1px 0 1px 10px; position:relative}
+.fiche__l li.now{border-left-color:var(--accent)}
+.fiche__l b{display:block; font-weight:500; font-size:13px}
+.fiche__l span{font-size:11.5px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.fiche__l em{display:block; font-style:normal; font-size:11.5px; color:var(--ink-2); margin-top:2px}
+.fiche__l button{position:absolute; right:0; top:0; border:0; background:none;
+  color:var(--ink-3); font-size:12px; cursor:pointer; padding:2px 4px}
+.fiche__l button:hover{color:var(--accent)}
+.fiche__v{font-size:12px; color:var(--ink-3); margin:0 0 13px}
+.fiche__f{display:flex; flex-direction:column; gap:8px;
+  border-top:1px solid var(--rule); padding-top:12px}
+.fiche__g{display:flex; gap:8px}
+.fiche label{display:flex; flex-direction:column; gap:3px; flex:1;
+  font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3)}
+.fiche input{font:inherit; font-size:12.5px; text-transform:none; letter-spacing:0;
+  color:var(--ink); background:var(--paper); border:1px solid var(--rule);
+  padding:6px 8px; width:100%}
+.fiche input:focus{outline:2px solid var(--accent); outline-offset:-2px}
+.fiche__b{display:flex; gap:7px; margin-top:3px}
+.fiche__b button{font:inherit; font-size:11.5px; padding:7px 11px; cursor:pointer;
+  border:1px solid var(--rule); background:var(--paper); color:var(--ink-2)}
+.fiche__b button[type=submit]{background:var(--accent); color:#FFF;
+  border-color:var(--accent); font-weight:500}
+.fiche__b button:hover{border-color:var(--ink-3)}
+/* Zones cliquables du plan : elles se superposent aux pieces. */
+#plan .hit{position:absolute; transform:none; background:none; padding:0;
+  pointer-events:auto; cursor:pointer; border:1px solid transparent}
+#plan .hit:hover{background:color-mix(in srgb,var(--accent) 13%,transparent);
+  border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .block__rows{font-size:12px}
 .row dt{font-weight:500}
 </style>
@@ -405,12 +468,49 @@ body.panel-open .hint{opacity:0}
 <div id="stage">
   <canvas id="gl"></canvas>
   <div id="plan"></div>
+
+  <div class="rnd" id="rnd" hidden>
+    <div class="rnd__b">
+      <div class="rnd__h">
+        <p class="eyebrow">Rendu de la vue courante</p>
+        <span id="rndN">0 / 0 passes</span>
+        <span class="grow"></span>
+        <button type="button" id="rndSave">Enregistrer</button>
+        <button type="button" id="rndX" aria-label="Fermer">×</button>
+      </div>
+      <canvas id="rndC"></canvas>
+    </div>
+  </div>
+
+  <section class="fiche" id="fiche" hidden aria-labelledby="ficheT">
+    <button type="button" class="fiche__x" id="ficheX" aria-label="Fermer">×</button>
+    <p class="eyebrow" id="ficheK"></p>
+    <h2 id="ficheT"></h2>
+    <p class="fiche__m" id="ficheM"></p>
+    <ol class="fiche__l" id="ficheL"></ol>
+    <form class="fiche__f" id="ficheF">
+      <div class="fiche__g">
+        <label>Nom<input id="ocN" required maxlength="60" placeholder="Prénom Nom"></label>
+        <label>Pays<input id="ocP" maxlength="40" placeholder="Irlande"></label>
+      </div>
+      <div class="fiche__g">
+        <label>Arrivée<input id="ocD" type="month"></label>
+        <label>Départ<input id="ocA" type="month" placeholder="—"></label>
+      </div>
+      <label>Un mot<input id="ocM" maxlength="120" placeholder="Deux ans d’Erasmus"></label>
+      <div class="fiche__b">
+        <button type="submit">Ajouter</button>
+        <button type="button" id="ocExp">Exporter</button>
+        <button type="button" id="ocImp">Importer</button>
+      </div>
+    </form>
+  </section>
   <div id="tags"></div>
 
   <section class="block">
     <div class="block__head">
       <button type="button" class="block__toggle" id="bInfo"
-              aria-expanded="true" aria-controls="blockBody" aria-label="Replier la fiche">
+              aria-expanded="false" aria-controls="blockBody" aria-label="Déplier la fiche">
         <span aria-hidden="true"></span>
       </button>
       <p class="eyebrow">Relevé et reconstruction volumétrique</p>
@@ -448,6 +548,8 @@ body.panel-open .hint{opacity:0}
       <button type="button" id="bGrid" aria-pressed="false">Cotes relevées</button>
       <button type="button" id="bClay" aria-pressed="false">Rendu argile</button>
       <button type="button" id="bSpin" aria-pressed="false">Rotation lente</button>
+      <button type="button" id="bOcc" aria-pressed="true"
+        title="Les chambres habitées s\u2019allument, les autres restent dans la pénombre">Éclairer l\u2019occupation</button>
       <button type="button" id="bShare">Partager le lien</button>
     </div>
     <div class="bar__ctx" id="walkBox" hidden>
@@ -495,6 +597,8 @@ body.panel-open .hint{opacity:0}
           title="Liste des œuvres : un clic amène la caméra devant">Œuvres</button>
         <button type="button" id="bWalk" aria-pressed="false"
           title="Se promener à hauteur d\u2019homme : glisser pour regarder, ZQSD ou flèches pour avancer">Balade</button>
+        <button type="button" id="bRnd"
+          title="Rendu progressif de la vue courante : antialiasing exact et ombres portées douces">Rendu</button>
         <button type="button" id="bTour" aria-pressed="false"
           title="Approche, ouverture des portes, traversée de l\u2019église, tour complet">Visite</button>
       </div>
@@ -537,6 +641,9 @@ const positions = new Float32Array(rawPos.length);
 for(let i=0;i<rawPos.length;i++) positions[i] = rawPos[i]*GEOM.scale;
 const matAttr = new Float32Array(matIdx.length);
 for(let i=0;i<matIdx.length;i++) matAttr[i] = matIdx[i];
+const roomIdx = GEOM.room ? b64(GEOM.room) : new Uint8Array(matIdx.length);
+const roomAttr = new Float32Array(roomIdx.length);
+for(let i=0;i<roomIdx.length;i++) roomAttr[i]=roomIdx[i];
 
 const BB = GEOM.bbox, SPANX=BB[3]-BB[0], SPANY=BB[4]-BB[1], SPANZ=BB[5]-BB[2];
 const TARGET = [0, SPANY*0.42, 0];
@@ -576,12 +683,12 @@ function prog(v,f){const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHA
   if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return p;}
 
 const pMesh = prog(`#version 300 es
-in vec3 aPos; in float aMat;
+in vec3 aPos; in float aMat; in float aRoom;
 uniform float uDoor; uniform int uPorte; uniform vec3 uHinge;
 uniform mat4 uMVP;
-out vec3 vP; flat out int vM;
+out vec3 vP; flat out int vM; flat out int vR;
 void main(){
-  vec3 P = aPos; vM = int(aMat + 0.5);
+  vec3 P = aPos; vM = int(aMat + 0.5); vR = int(aRoom + 0.5);
   if(uDoor > 0.001 && vM == uPorte){
     // Chaque vantail tourne autour de son gond exterieur, vers l'interieur.
     float sg = (P.x < 0.5 * (uHinge.x + uHinge.y)) ? -1.0 : 1.0;
@@ -595,7 +702,7 @@ void main(){
 }`,
 `#version 300 es
 precision highp float;
-in vec3 vP; flat in int vM;
+in vec3 vP; flat in int vM; flat in int vR;
 // La palette est indexee par le materiau : ce tableau doit etre au moins
 // aussi grand que MATS. Il etait dimensionne a 23 pour 36 materiaux, et tout
 // ce qui depassait lisait hors bornes — d'ou des sols verts et des dorures
@@ -607,12 +714,19 @@ uniform sampler2D uTexA, uTexT, uTexP, uTexB, uTexB2, uTexI, uTexD;
 uniform int uMosF, uMosT, uMosA, uMosP, uMosB, uMosB2, uMur, uBrq, uMosI, uMosD;
 uniform float uCut, uCutY; uniform vec3 uL, uSky, uGnd, uClayCol, uEye;
 uniform float uClay, uGlass, uPick;
-uniform int uVit;
+uniform int uVit, uOpal;
+// Occupation des chambres : une texture 128 x 1, un texel par piece, 0 ou 1.
+// Une piece habitee s'allume, une piece vide reste dans la penombre — d'un
+// coup d'oeil sur la maquette on voit qui est la.
+uniform sampler2D uOcc; uniform float uOccMix;
+// Carte d'ombre du soleil, utilisee par le rendu progressif seulement : le
+// visualiseur temps reel dessine sans ombre pour rester fluide.
+uniform mat4 uLS; uniform sampler2D uShadow; uniform float uShadowOn;
 out vec4 o;
 void main(){
   if(uPick > 0.5){                       // passe de selection : on encode vM
     if(vP.x < uCut || vP.y > uCutY) discard;
-    o = vec4(float(vM + 1) / 255.0, 0.0, 0.0, 1.0);
+    o = vec4(float(vM + 1) / 255.0, float(vR) / 255.0, 0.0, 1.0);
     return;
   }
   // Coupe longitudinale : on ecarte tout ce qui est a l'ouest du plan, ce qui
@@ -687,10 +801,28 @@ void main(){
     uv = uv * kk + (1.0 - kk) * 0.5;
     base = pow(texture(uTex, vec2(uv.x, 1.0 - uv.y)).rgb, vec3(2.2));
   }
+  float occ = 1.0;
+  if(vR > 0 && uOccMix > 0.001)
+    occ = texelFetch(uOcc, ivec2(vR & 127, 0), 0).r;
   float key  = max(dot(n, normalize(uL)), 0.0);
+  if(uShadowOn > 0.5 && key > 0.0){
+    vec4 lp = uLS * vec4(vP, 1.0);
+    vec3 q = lp.xyz / lp.w * 0.5 + 0.5;
+    if(q.x > 0.001 && q.x < 0.999 && q.y > 0.001 && q.y < 0.999 && q.z < 1.0){
+      float bi = 0.0010 + 0.0042 * (1.0 - key);
+      if(texture(uShadow, q.xy).r < q.z - bi) key *= 0.05;
+    }
+  }
   float fill = max(dot(n, normalize(vec3(-uL.x,0.35,-uL.z))), 0.0)*0.28;
   vec3 amb = mix(uGnd, uSky, 0.5+0.5*n.y);
   vec3 c = base*(amb*0.62 + key*0.78 + fill);
+  if(vR > 0 && uOccMix > 0.001){
+    // Penombre pour la piece vide, lumiere chaude pour la piece habitee.
+    vec3 t = mix(vec3(0.79, 0.79, 0.83), vec3(1.30, 1.16, 0.96), occ);
+    c *= mix(vec3(1.0), t, uOccMix);
+    if(vM == uOpal)                       // le plafonnier lui-meme
+      c = mix(c, vec3(1.0, 0.96, 0.86), uOccMix * occ);
+  }
   float alpha = 1.0;
   if(uGlass > 0.5){
     // Verre : reflet speculaire du ciel croissant en incidence rasante,
@@ -705,13 +837,32 @@ void main(){
       c = base * (0.85 + 0.45 * key) + sky * (0.10 + 0.30 * fres) + spec * 0.40;
       alpha = 0.50 + 0.34 * fres;
     }else{
-      // Vitre claire : elle ne se voit que par ce qu'elle reflete.
-      c = mix(base * 0.55, sky, 0.22 + 0.72 * fres) + spec * 0.65;
-      alpha = 0.26 + 0.58 * fres;
+      // Vitre claire. Maintenant que les pieces existent derriere, on les
+      // regarde : le reflet ne prend le dessus qu'en incidence tres rasante.
+      c = mix(base * 0.42, sky, 0.06 + 0.80 * fres) + spec * 0.70;
+      alpha = 0.07 + 0.66 * fres * fres;
     }
   }
   o = vec4(pow(clamp(c,0.0,1.0), vec3(1.0/2.2)), alpha);
 }`);
+
+/* ── occupation des pieces ────────────────────────────────── */
+// Un texel par piece : le shader y lit si elle est habitee. On la met a jour
+// des que la liste des occupants change, sans retoucher la geometrie.
+const OCC_N = 128;
+const occData = new Uint8Array(OCC_N * 4);
+const occTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, occTex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+function occUpload(){
+  gl.bindTexture(gl.TEXTURE_2D, occTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, OCC_N, 1, 0, gl.RGBA,
+                gl.UNSIGNED_BYTE, occData);
+}
+occUpload();
 
 const pLine = prog(`#version 300 es
 in vec3 aPos; uniform mat4 uMVP;
@@ -719,6 +870,131 @@ void main(){ gl_Position=uMVP*vec4(aPos,1.0); }`,
 `#version 300 es
 precision highp float; uniform vec4 uC; out vec4 o;
 void main(){ o=uC; }`);
+
+/* ── rendu progressif ─────────────────────────────────────── */
+// Le visualiseur dessine a plat, sans ombre, pour rester fluide. Ce mode fige
+// la camera et accumule des centaines de passes : l'echantillonnage
+// sous-pixel donne un trace exact, et faire varier la direction du soleil
+// d'une passe a l'autre creuse une vraie penombre.
+const RND_MAX = 384, SHADOW_N = 2048;
+let lastP=null, lastV=null, lastEye=null;
+let rndOn=false, rndI=0, rndW=0, rndH=0, rndP=null, rndV=null, rndEye=null,
+    rndOrtho=false, rndPix=null, rndCtx=null, rndFloat=false;
+let fbFrame,texFrame,rbFrame, fbAcc,texAcc, fbOut,texOut, fbSh,texSh, texDummy;
+const vaoNull = gl.createVertexArray();
+const pQuad = prog(`#version 300 es
+out vec2 vUV;
+void main(){
+  vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
+  vUV = p; gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`,
+`#version 300 es
+precision highp float;
+in vec2 vUV; uniform sampler2D uT;
+uniform float uScale, uToLin, uToSrgb, uFlip;
+out vec4 o;
+void main(){
+  vec2 uv = vec2(vUV.x, uFlip > 0.5 ? 1.0 - vUV.y : vUV.y);
+  vec3 c = texture(uT, uv).rgb;
+  if(uToLin > 0.5) c = pow(c, vec3(2.2));
+  c *= uScale;
+  if(uToSrgb > 0.5) c = pow(clamp(c, 0.0, 1.0), vec3(1.0 / 2.2));
+  o = vec4(c, 1.0);
+}`);
+function quadPass(tex, scale, toLin, toSrgb, flip){
+  gl.useProgram(pQuad);
+  gl.activeTexture(gl.TEXTURE9); gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.uniform1i(gl.getUniformLocation(pQuad,"uT"),9);
+  gl.uniform1f(gl.getUniformLocation(pQuad,"uScale"),scale);
+  gl.uniform1f(gl.getUniformLocation(pQuad,"uToLin"),toLin);
+  gl.uniform1f(gl.getUniformLocation(pQuad,"uToSrgb"),toSrgb);
+  gl.uniform1f(gl.getUniformLocation(pQuad,"uFlip"),flip);
+  gl.disable(gl.DEPTH_TEST);
+  gl.bindVertexArray(vaoNull); gl.drawArrays(gl.TRIANGLES,0,3);
+  gl.bindVertexArray(null); gl.enable(gl.DEPTH_TEST);
+}
+function rndTex(internal, format, type, w, h, filt){
+  const t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t);
+  gl.texImage2D(gl.TEXTURE_2D,0,internal,w,h,0,format,type,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,filt);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,filt);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  return t;
+}
+function rndInit(w,h){
+  if(!texSh){
+    gl.getExtension("EXT_color_buffer_float");
+    rndFloat = !!gl.getExtension("EXT_color_buffer_half_float") ||
+               !!gl.getExtension("EXT_color_buffer_float");
+    texSh = rndTex(gl.DEPTH_COMPONENT24, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT,
+                   SHADOW_N, SHADOW_N, gl.NEAREST);
+    fbSh = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,fbSh);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,texSh,0);
+    gl.drawBuffers([gl.NONE]); gl.readBuffer(gl.NONE);
+    texDummy = rndTex(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, 1, 1, gl.NEAREST);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  }
+  if(rndW===w && rndH===h) return;
+  rndW=w; rndH=h;
+  texFrame = rndTex(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, w, h, gl.LINEAR);
+  fbFrame = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,fbFrame);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,texFrame,0);
+  rbFrame = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER,rbFrame);
+  gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT24,w,h);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,rbFrame);
+  texAcc = rndFloat ? rndTex(gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, w, h, gl.NEAREST)
+                    : rndTex(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, w, h, gl.NEAREST);
+  fbAcc = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,fbAcc);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,texAcc,0);
+  texOut = rndTex(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, w, h, gl.LINEAR);
+  fbOut = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,fbOut);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,texOut,0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  rndPix = new Uint8ClampedArray(w*h*4);
+}
+// Soleil du rendu : plus bas que celui du temps reel (0,48 0,78 0,40), sans
+// quoi les ombres tombent sous les volumes et ne se lisent pas.
+const SUN = norm([0.66, 0.52, 0.54]);
+let rndL = SUN.slice(), rndLS = null;
+function rndSun(){
+  // Disque solaire elargi : c'est lui qui donne la douceur du bord d'ombre.
+  const a = Math.random()*Math.PI*2, r = Math.sqrt(Math.random())*0.055;
+  rndL = norm([SUN[0]+Math.cos(a)*r, SUN[1]+Math.sin(a)*r*0.55, SUN[2]+Math.sin(a)*r]);
+  const C=[(BB[0]+BB[3])/2,(BB[1]+BB[4])/2,(BB[2]+BB[5])/2];
+  const R=0.5*Math.hypot(BB[3]-BB[0],BB[4]-BB[1],BB[5]-BB[2])+1.5;
+  const e=[C[0]+rndL[0]*R*2, C[1]+rndL[1]*R*2, C[2]+rndL[2]*R*2];
+  const up = Math.abs(rndL[1])>0.95 ? [0,0,1] : [0,1,0];
+  rndLS = M4.mul(M4.ortho(-R,R,-R,R,0.05,R*4), M4.look(e,C,up));
+}
+function rndStart(){
+  const dpr = Math.min(devicePixelRatio||1, 2);
+  const w = Math.min(1920, Math.round(W*dpr)), h = Math.min(1200, Math.round(H*dpr));
+  rndInit(w,h);
+  rndP = lastP.slice(); rndV = lastV.slice(); rndEye = lastEye.slice();
+  rndOrtho = orthoOn;
+  rndI = 0;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,fbAcc);
+  gl.viewport(0,0,w,h); gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  const c=document.getElementById("rndC"); c.width=w; c.height=h;
+  rndCtx = c.getContext("2d");
+  document.getElementById("rnd").hidden=false;
+  rndOn=true; sync();
+}
+function rndStop(){
+  rndOn=false; document.getElementById("rnd").hidden=true; sync();
+}
+function rndShow(){
+  gl.bindFramebuffer(gl.FRAMEBUFFER,fbOut);
+  gl.viewport(0,0,rndW,rndH);
+  quadPass(texAcc, RND_MAX/Math.max(1,rndI), 0.0, 1.0, 1.0);
+  gl.readPixels(0,0,rndW,rndH,gl.RGBA,gl.UNSIGNED_BYTE,rndPix);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  rndCtx.putImageData(new ImageData(rndPix, rndW, rndH), 0, 0);
+  document.getElementById("rndN").textContent =
+    rndI + " / " + RND_MAX + " passes" + (rndI>=RND_MAX ? " — terminé" : "");
+}
 
 function buf(data,loc,size,p){
   const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
@@ -729,6 +1005,7 @@ function buf(data,loc,size,p){
 const vaoMesh = gl.createVertexArray();
 gl.bindVertexArray(vaoMesh);
 buf(positions,"aPos",3,pMesh); buf(matAttr,"aMat",1,pMesh);
+buf(roomAttr,"aRoom",1,pMesh);
 gl.bindVertexArray(null);
 
 /* grille metrique + lignes de niveau */
@@ -900,6 +1177,112 @@ const TOUR = [
 const T_ORB0 = 50.5, T_END = 74;
 let tourOn=false, tourPlay=false, tourT=0, doorNow=0;
 
+/* ── occupants des chambres ───────────────────────────────── */
+// Qui habite, qui a habité chaque pièce. Les séjours déjà connus sont écrits
+// ici ; ceux que l'on saisit restent dans le navigateur et s'exportent en
+// JSON, pour être reversés ensuite dans le fichier.
+const OCCUPANTS = {
+  // "1/4A": [{n:"…", p:"Irlande", du:"2019-09", au:"2021-06", m:"…"}],
+};
+const OCC_KEY = "sanpatrizio.occupants.v1";
+let OCC = {};
+try { OCC = JSON.parse(localStorage.getItem(OCC_KEY) || "{}") || {}; } catch(e){ OCC = {}; }
+let occOn = true, ficheI = -1;
+const MOIS = new Date().toISOString().slice(0, 7);
+const occKey = i => { const p = PIECES[i]; return p ? p.l + "/" + p.n : ""; };
+const occAll = i => [...(OCCUPANTS[occKey(i)] || []).map(o => ({...o, fixe:1})),
+                     ...(OCC[occKey(i)] || [])];
+const occEnCours = o => (!o.du || o.du <= MOIS) && (!o.au || o.au >= MOIS);
+const occNow = i => occAll(i).some(occEnCours);
+function occSave(){
+  try { localStorage.setItem(OCC_KEY, JSON.stringify(OCC)); } catch(e){}
+}
+function occRefresh(){
+  occData.fill(0);
+  PIECES.forEach((p, i) => { if(p.l >= 1 && occNow(i)) occData[(i + 1) * 4] = 255; });
+  occUpload(); sync();
+}
+const NIV = ["Rez-de-chaussée", "1ᵉʳ étage", "2ᵉ étage", "3ᵉ étage"];
+const moisFr = v => {
+  if(!v) return null;
+  const [a, m] = v.split("-");
+  return ["janv.","févr.","mars","avril","mai","juin","juil.","août",
+          "sept.","oct.","nov.","déc."][(+m || 1) - 1] + " " + a;
+};
+const fiche = document.getElementById("fiche");
+function showRoom(i){
+  const p = PIECES[i]; if(!p) return;
+  ficheI = i; fiche.hidden = false;
+  document.getElementById("ficheK").textContent = NIV[p.l] || "";
+  document.getElementById("ficheT").textContent = p.n;
+  document.getElementById("ficheM").textContent =
+    p.a.toFixed(1).replace(".", ",") + " m² · " +
+    (occNow(i) ? "occupée" : "libre");
+  const L = document.getElementById("ficheL");
+  L.replaceChildren();
+  const list = occAll(i);
+  if(!list.length){
+    const v = document.createElement("p");
+    v.className = "fiche__v";
+    v.textContent = "Personne n\u2019est encore inscrit dans cette pièce.";
+    L.replaceChildren(v);
+  }
+  list.forEach((o, k) => {
+    const li = document.createElement("li");
+    if(occEnCours(o)) li.className = "now";
+    const b = document.createElement("b");
+    b.textContent = o.n + (o.p ? " · " + o.p : "");
+    const sp = document.createElement("span");
+    const d = moisFr(o.du), a = moisFr(o.au);
+    sp.textContent = d && a ? d + " – " + a
+                   : d ? "depuis " + d
+                   : a ? "jusqu\u2019en " + a : "dates inconnues";
+    li.append(b, sp);
+    if(o.m){ const em = document.createElement("em"); em.textContent = o.m; li.append(em); }
+    if(!o.fixe){
+      const x = document.createElement("button");
+      x.type = "button"; x.textContent = "×"; x.title = "Retirer";
+      x.addEventListener("click", () => {
+        const arr = OCC[occKey(i)] || [];
+        arr.splice(k - (list.length - arr.length), 1);
+        if(!arr.length) delete OCC[occKey(i)];
+        occSave(); occRefresh(); showRoom(i);
+      });
+      li.append(x);
+    }
+    L.append(li);
+  });
+}
+document.getElementById("ficheX").addEventListener("click", () => {
+  fiche.hidden = true; ficheI = -1;
+});
+document.getElementById("ficheF").addEventListener("submit", e => {
+  e.preventDefault();
+  if(ficheI < 0) return;
+  const g = id => document.getElementById(id).value.trim();
+  if(!g("ocN")) return;
+  const k = occKey(ficheI);
+  (OCC[k] = OCC[k] || []).push({ n:g("ocN"), p:g("ocP"), du:g("ocD"),
+                                 au:g("ocA"), m:g("ocM") });
+  OCC[k].sort((a, b) => (a.du || "").localeCompare(b.du || ""));
+  ["ocN","ocP","ocD","ocA","ocM"].forEach(id => document.getElementById(id).value = "");
+  occSave(); occRefresh(); showRoom(ficheI);
+});
+document.getElementById("ocExp").addEventListener("click", async () => {
+  const t = JSON.stringify(OCC, null, 1);
+  try { await navigator.clipboard.writeText(t); alert("Fiches copiées dans le presse-papiers."); }
+  catch(e){ prompt("Copie ces fiches :", t); }
+});
+document.getElementById("ocImp").addEventListener("click", () => {
+  const t = prompt("Colle des fiches exportées :", "");
+  if(!t) return;
+  try {
+    const d = JSON.parse(t);
+    for(const k in d) OCC[k] = [...(OCC[k] || []), ...d[k]];
+    occSave(); occRefresh(); if(ficheI >= 0) showRoom(ficheI);
+  } catch(e){ alert("Ce texte n\u2019est pas une liste de fiches lisible."); }
+});
+
 /* ── etiquettes du plan ───────────────────────────────────── */
 // Le nom s'ecrit au centre de la piece, dans le plan du sol. On le retire des
 // que la piece devient trop petite a l'ecran : un plan illisible ment.
@@ -916,26 +1299,37 @@ function planLabels(MVP){
     planWrap.textContent = ""; planEls = []; planLvl = lvl;
     for(const p of PIECES){
       if(p.l !== lvl) continue;
-      const d = document.createElement("div");
+      const i = PIECES.indexOf(p);
+      const h = document.createElement("div");     // zone cliquable
+      h.className = "hit";
+      h.title = "Qui habite " + p.n + " ?";
+      h.addEventListener("click", () => showRoom(i));
+      const d = document.createElement("div");     // etiquette
       d.innerHTML = "<b></b><i></i>";
       d.firstChild.textContent = p.n;
       d.lastChild.textContent = p.a.toFixed(1).replace(".", ",") + " m²";
-      planWrap.appendChild(d);
-      planEls.push({d, p});
+      planWrap.append(h, d);
+      planEls.push({d, h, p, i});
     }
   }
   const sx = v => (v * 0.5 + 0.5) * W, sy = v => (0.5 - v * 0.5) * H;
   const px = (x, y, z) => [
     MVP[0]*x + MVP[4]*y + MVP[8]*z + MVP[12],
     MVP[1]*x + MVP[5]*y + MVP[9]*z + MVP[13]];
-  for(const {d, p} of planEls){
+  for(const {d, h, p, i} of planEls){
     const a = px(p.x0, p.y, p.z0), b = px(p.x1, p.y, p.z1);
-    const w = Math.abs(sx(b[0]) - sx(a[0])), h = Math.abs(sy(b[1]) - sy(a[1]));
-    if(w < 58 || h < 26){ d.style.display = "none"; continue; }
+    const x0 = Math.min(sx(a[0]), sx(b[0])), x1 = Math.max(sx(a[0]), sx(b[0]));
+    const y0 = Math.min(sy(a[1]), sy(b[1])), y1 = Math.max(sy(a[1]), sy(b[1]));
+    const w = x1 - x0, hh = y1 - y0;
+    h.style.display = p.l >= 1 ? "" : "none";
+    h.style.left = x0 + "px"; h.style.top = y0 + "px";
+    h.style.width = w + "px"; h.style.height = hh + "px";
+    if(w < 58 || hh < 26){ d.style.display = "none"; continue; }
     d.style.display = "";
-    d.style.left = ((sx(a[0]) + sx(b[0])) / 2) + "px";
-    d.style.top  = ((sy(a[1]) + sy(b[1])) / 2) + "px";
-    d.lastChild.style.display = h < 40 ? "none" : "";
+    d.style.left = ((x0 + x1) / 2) + "px";
+    d.style.top  = ((y0 + y1) / 2) + "px";
+    d.lastChild.style.display = hh < 40 ? "none" : "";
+    d.firstChild.style.color = (p.l >= 1 && occNow(i)) ? "var(--accent)" : "";
   }
 }
 
@@ -1104,7 +1498,10 @@ function pan(dx,dy){
 function trySelect(e){                             // clic net = selection
   if(dragDist>=5 || !lastMVP) return;
   const r=cv.getBoundingClientRect();
-  showNote(pickAt(e.clientX-r.left, e.clientY-r.top));
+  const hit = pickAt(e.clientX-r.left, e.clientY-r.top);
+  if(BY_ID[hit.m]) showNote(hit.m);
+  else if(hit.r > 0) showRoom(hit.r - 1);
+  else showNote(-1);
 }
 // Les deux : selon le navigateur, "pointerup" peut ne pas etre delivre apres
 // une capture de pointeur, alors que "click" l'est toujours.
@@ -1204,6 +1601,12 @@ bMore.addEventListener("click",e=>{ e.stopPropagation(); setMenu(moreMenu.hidden
 moreMenu.addEventListener("click",()=>setMenu(false));
 document.addEventListener("click",e=>{ if(!moreMenu.hidden && !moreMenu.contains(e.target)) setMenu(false); });
 bInside.addEventListener("click",()=>{insideOn=!insideOn; applyInside();});
+const bOcc = document.getElementById("bOcc");
+bOcc.addEventListener("click",()=>{
+  occOn = !occOn;
+  bOcc.setAttribute("aria-pressed", occOn ? "true" : "false");
+  sync();
+});
 const bWalk=document.getElementById("bWalk"), walkBox=document.getElementById("walkBox"),
       walkGo=document.getElementById("walkGo"), joy=document.getElementById("joy");
 SPAWNS.forEach((s,i)=>{
@@ -1241,6 +1644,21 @@ joy.addEventListener("pointermove",e=>{
 });
 const joyEnd=()=>{ joyId=null; joyV=[0,0]; joy.firstElementChild.style.transform=""; };
 joy.addEventListener("pointerup",joyEnd); joy.addEventListener("pointercancel",joyEnd);
+const bRnd=document.getElementById("bRnd");
+bRnd.addEventListener("click",()=>{ if(!rndOn) rndStart(); });
+document.getElementById("rndX").addEventListener("click",rndStop);
+document.getElementById("rnd").addEventListener("click",e=>{
+  if(e.target.id==="rnd") rndStop();
+});
+document.getElementById("rndSave").addEventListener("click",()=>{
+  document.getElementById("rndC").toBlob(b=>{
+    const u=URL.createObjectURL(b), a=document.createElement("a");
+    a.href=u; a.download="san-patrizio-rendu.png"; a.click();
+    setTimeout(()=>URL.revokeObjectURL(u),4000);
+  }, "image/png");
+});
+addEventListener("keydown",e=>{ if(e.key==="Escape" && rndOn) rndStop(); });
+
 bTour.addEventListener("click",()=>{
   if(!tourOn){                       // la visite se joue sur le volume complet
     tourOn=true; tourT=0; insideOn=false; applyInside(); spin=false;
@@ -1324,6 +1742,9 @@ const reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;
 let last=performance.now();
 function frame(now){
   const dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(rndOn && rndI >= RND_MAX){          // rendu termine : on laisse l'image
+    requestAnimationFrame(frame); return;
+  }
   const goal = cutOn ? 1 : 0;
   if(reduce) cutT = goal;
   else if(cutT !== goal){
@@ -1344,6 +1765,13 @@ function frame(now){
   if(cv.clientWidth!==W||cv.clientHeight!==H) resize();
 
   let eye, P, V;
+  if(rndOn){
+    // Camera figee : chaque passe ne bouge que d'un sous-pixel.
+    P = rndP.slice(); V = rndV; eye = rndEye;
+    const jx = (Math.random()*2-1)/rndW, jy = (Math.random()*2-1)/rndH;
+    if(rndOrtho){ P[12]+=jx; P[13]+=jy; } else { P[8]+=jx; P[9]+=jy; }
+    rndSun();
+  } else
   if(walkOn){
     // Deplacement : ZQSD, WASD ou fleches au clavier, manette au doigt.
     let fwd=0, sid=0;
@@ -1430,7 +1858,7 @@ function frame(now){
       V=M4.look(eye,target,[0,1,0]);
     }
   }
-  const MVP=M4.mul(P,V); lastMVP=MVP;
+  const MVP=M4.mul(P,V); lastMVP=MVP; lastP=P; lastV=V; lastEye=eye;
   planLabels(MVP);
 
   gl.clearColor(CLR[0],CLR[1],CLR[2],1);
@@ -1487,6 +1915,10 @@ function frame(now){
   gl.uniform1i(gl.getUniformLocation(pMesh,"uTexI"),5);
   gl.activeTexture(gl.TEXTURE6); gl.bindTexture(gl.TEXTURE_2D,texD);
   gl.uniform1i(gl.getUniformLocation(pMesh,"uTexD"),6);
+  gl.activeTexture(gl.TEXTURE8); gl.bindTexture(gl.TEXTURE_2D,occTex);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uOcc"),8);
+  gl.uniform1f(gl.getUniformLocation(pMesh,"uOccMix"),occOn?1.0:0.0);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uOpal"),MI["opaline"]|0);
   gl.uniform1i(gl.getUniformLocation(pMesh,"uMosI"),GEOM.mosI|0);
   gl.uniform1i(gl.getUniformLocation(pMesh,"uMosD"),GEOM.mosD|0);
   gl.uniform4fv(gl.getUniformLocation(pMesh,"uBBi"),new Float32Array(GEOM.bbI||[0,1,0,1]));
@@ -1504,8 +1936,33 @@ function frame(now){
   gl.uniform3fv(gl.getUniformLocation(pMesh,"uGnd"),new Float32Array(GND));
   gl.uniform3f(gl.getUniformLocation(pMesh,"uEye"),eye[0],eye[1],eye[2]);
   const uGlass=gl.getUniformLocation(pMesh,"uGlass");
+  const uSh=gl.getUniformLocation(pMesh,"uShadowOn");
+  const uMVPl=gl.getUniformLocation(pMesh,"uMVP");
   const g0=(GEOM.glass0||0)*3;
   gl.bindVertexArray(vaoMesh);
+  if(rndOn){
+    // 1. profondeur vue du soleil, sur les seules faces opaques
+    gl.activeTexture(gl.TEXTURE10); gl.bindTexture(gl.TEXTURE_2D,texDummy);
+    gl.uniform1i(gl.getUniformLocation(pMesh,"uShadow"),10);
+    gl.uniform1f(uSh,0.0);
+    gl.uniformMatrix4fv(uMVPl,false,new Float32Array(rndLS));
+    gl.bindFramebuffer(gl.FRAMEBUFFER,fbSh);
+    gl.viewport(0,0,SHADOW_N,SHADOW_N);
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES,0,g0);
+    // 2. passe couleur, soleil du moment et carte d'ombre
+    gl.activeTexture(gl.TEXTURE10); gl.bindTexture(gl.TEXTURE_2D,texSh);
+    gl.uniform1f(uSh,1.0);
+    gl.uniformMatrix4fv(gl.getUniformLocation(pMesh,"uLS"),false,new Float32Array(rndLS));
+    gl.uniform3f(gl.getUniformLocation(pMesh,"uL"),rndL[0],rndL[1],rndL[2]);
+    gl.uniformMatrix4fv(uMVPl,false,new Float32Array(MVP));
+    gl.bindFramebuffer(gl.FRAMEBUFFER,fbFrame);
+    gl.viewport(0,0,rndW,rndH);
+    gl.clearColor(CLR[0],CLR[1],CLR[2],1);
+    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  }else{
+    gl.uniform1f(uSh,0.0);
+  }
   gl.uniform1f(uGlass,0.0);
   gl.drawArrays(gl.TRIANGLES,0,g0);                       // opaques
   if(GEOM.count>g0){                                       // puis le verre
@@ -1516,6 +1973,20 @@ function frame(now){
     gl.depthMask(true); gl.disable(gl.BLEND);
   }
   gl.bindVertexArray(null);
+
+  if(rndOn){
+    gl.bindFramebuffer(gl.FRAMEBUFFER,fbAcc);
+    gl.viewport(0,0,rndW,rndH);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE,gl.ONE); gl.depthMask(false);
+    quadPass(texFrame, 1.0/RND_MAX, 1.0, 0.0, 0.0);
+    gl.disable(gl.BLEND); gl.depthMask(true);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+    gl.viewport(0,0,cv.width,cv.height);
+    rndI++;
+    if(rndI <= 3 || rndI % 6 === 0 || rndI >= RND_MAX) rndShow();
+    requestAnimationFrame(frame);
+    return;
+  }
 
   // etiquettes projetees
   if(showGrid){
@@ -1550,7 +2021,7 @@ function frame(now){
     gazeT += dt;
     if(gazeT >= 0.2){
       gazeT = 0;
-      const id = pickAt(W / 2, H / 2);
+      const id = pickAt(W / 2, H / 2).m;
       if(id !== gazeId){ gazeId = id; gazeHold = 0; }
       else gazeHold += 0.2;
       const nt = BY_ID[gazeId];
@@ -1583,7 +2054,8 @@ function applyCompact(){
   const w=document.getElementById("stage").getBoundingClientRect().width;
   const c=w<760;
   document.documentElement.classList.toggle("compact",c);
-  if(!userToggled) setInfo(!c);          // replie d'office sur petit ecran
+  // Repliee d'office : la maquette passe avant sa fiche signaletique.
+  if(!userToggled) setInfo(false);
 }
 applyCompact(); addEventListener("resize",applyCompact);
 
@@ -1703,7 +2175,7 @@ function pickAt(px,py){
   gl.uniform1f(gl.getUniformLocation(pMesh,"uPick"),0.0);
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   gl.viewport(0,0,cv.width,cv.height);
-  return buf[0]-1;
+  return {m: buf[0]-1, r: buf[1]};
 }
 // Les notices sont indexees par NOM de materiau : l'index numerique change des
 // qu'un materiau s'insere dans la liste, et les notices partaient alors sur la
@@ -1780,5 +2252,5 @@ document.getElementById("bShare").addEventListener("click",async()=>{
   catch{ say("Copiez le lien depuis la barre d\u2019adresse"); }
 });
 
-sync(); requestAnimationFrame(frame);
+occRefresh(); sync(); requestAnimationFrame(frame);
 </script>

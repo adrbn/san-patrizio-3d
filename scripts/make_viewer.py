@@ -62,12 +62,32 @@ xs = [v[0] for v in verts]; ys = [v[1] for v in verts]; zs = [v[2] for v in vert
 bbox = [min(xs), min(ys), min(zs), max(xs), max(ys), max(zs)]
 SCALE = 0.002                                     # quantification 2 mm -> Int16
 
-pos = bytearray(); mid = bytearray()
+# --- rattachement de chaque triangle a une piece -------------------------
+# Un octet par sommet : 0 = hors piece, sinon rang dans PIECES + 1. C'est ce
+# qui permet d'eclairer une chambre occupee et d'en ouvrir la fiche d'un clic.
+_HAB = [(i, p) for i, p in enumerate(PIECES) if p["l"] >= 1]
+
+
+def room_of(cx, cy, cz):
+    best, bd = 0, 1e9
+    for i, p in _HAB:
+        if not (p["x0"] - 0.35 <= cx <= p["x1"] + 0.35): continue
+        if not (p["z0"] - 0.35 <= cz <= p["z1"] + 0.35): continue
+        d = cy - p["y"]
+        if -0.45 <= d <= 5.6 and d < bd:
+            bd, best = d, i + 1
+    return best
+
+
+pos = bytearray(); mid = bytearray(); rid = bytearray()
 for t, m in zip(tris, mats):
+    a, b, c = (verts[i] for i in t)
+    r = room_of((a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3,
+                (a[2] + b[2] + c[2]) / 3)
     for vi in t:
         x, y, z = verts[vi]
         pos += struct.pack("<hhh", round(x / SCALE), round(y / SCALE), round(z / SCALE))
-        mid.append(m)
+        mid.append(m); rid.append(r)
 
 # Les faces de l'OBJ sont triees par materiau : le verre se retrouve en fin de
 # liste, on peut donc le dessiner dans une seconde passe, en transparence.
@@ -109,10 +129,15 @@ TEXPATH = os.environ.get("MOSAIC_TEX",
                  "..", "assets", "mosaique_fronton.png"))
 TEXPATH = TEXPATH if os.path.exists(TEXPATH) else ""
 tex_b64 = _b64.b64encode(open(TEXPATH, "rb").read()).decode() if TEXPATH else ""
-TEXA = os.environ.get("APSE_TEX", "")
-TEXA = TEXA if TEXA and os.path.exists(TEXA) else ""
-TEXT = os.environ.get("TYMP_TEX", "")
-TEXT = TEXT if TEXT and os.path.exists(TEXT) else ""
+# Ces deux-la n'avaient pas de chemin par defaut : elles ne s'embarquaient que
+# si le build etait lance avec APSE_TEX= et TYMP_TEX=, et disparaissaient
+# silencieusement sinon. La conque et le tympan se peignaient alors a plat.
+_ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets")
+TEXA = os.environ.get("APSE_TEX", os.path.join(_ASSETS, "mosaique_abside.png"))
+TEXA = TEXA if os.path.exists(TEXA) else ""
+TEXT = os.environ.get("TYMP_TEX", os.path.join(_ASSETS, "mosaique_tympan_hd.png"))
+TEXT = TEXT if os.path.exists(TEXT) else ""
+assert TEXA and TEXT, "conque ou tympan introuvable dans assets/"
 # La Cene de la tribune, decoupee dans le cliche de contre-facade
 TEXP = os.environ.get("CENE_TEX",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "cene.png"))
@@ -160,6 +185,7 @@ out = {
     "count": len(tris) * 3,
     "pos": base64.b64encode(bytes(pos)).decode(),
     "mat": base64.b64encode(bytes(mid)).decode(),
+    "room": base64.b64encode(bytes(rid)).decode(),
 }
 os.makedirs("reconstruction", exist_ok=True)
 json.dump(out, open("reconstruction/geom.json", "w"))

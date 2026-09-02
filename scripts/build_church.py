@@ -932,7 +932,7 @@ box(X_NW, X_NE, Y_F, Y_B, 0, Z_EAVE, "mur", top=False,
 # trace suit exactement la rive de la conque (meme rayon, meme naissance).
 wall_panel("y", Y_B, +1, X_NW, X_NE, 0, Z_EAVE,
            [(APSE_CX, APSE_R - 0.62, 0, 7.90)], mat="mur", nz=54)
-box(X_NW, X_NE, Y_B - 0.06, Y_B, Z_EAVE, Z_EAVE + 0.60, "mur")
+box(X_NW, X_NE, Y_B - 0.08, Y_B - 0.02, Z_EAVE, Z_EAVE + 0.60, "mur")
 cornice(X_NW, X_NE, Y_F, Y_B, Z_EAVE, h=0.55, proj=0.5, skip=("front",),
         roof=False)
 gable(X_NW - 0.5, X_NE + 0.5, Y_F + 0.35, Y_B, Z_EAVE + 0.55, Z_RIDGE, "tuile", "mur")
@@ -971,9 +971,17 @@ for (plane, out) in ((X_W, -1), (X_E, +1)):
         archivolt("x", plane, out, yc, 2.40, 5.20, 0.58, w=0.22, d=0.24)
     blind_arcade("x", plane, out, Y_NARTH, Y_B, Z_AISLE_LOW - 0.9, 20)
     blind_arcade("x", plane, out, Y_F + SETBACK, Y_NARTH, Z_AISLE_HIGH - 0.9, 11)
+    # Quatre travees par flanc et par niveau. Elles n'etaient pas placees sur
+    # les pieces : reparties regulierement sur les 16,27 m du corps, l'une
+    # tombait dans l'epaisseur du mur mitoyen et la cuisine restait aveugle.
+    # On les cale desormais sur le releve DoveVivo :
+    #   4,95 — axe de la cuisine a l'ouest, de la salle d'etude a l'est
+    #   7,85 — angle nord de la chambre 7 et de la cage d'escalier
+    #  11,05 — le couloir, et le second cabinet a l'ouest
+    #  13,71 — axe des chambres sur rue
     for lvl in (2.10, 6.90, 11.00):
-        for k in range(3):        # trois baies par flanc, releve photographique
-            yc = Y_F + SETBACK + (Y_NARTH - Y_F - SETBACK) * (k + 0.5) / 3
+        for py_bay in (4.95, 7.85, 11.05, 13.71):
+            yc = Y_NARTH - py_bay
             HOLES.append((yc, 0.58, lvl, lvl + 1.35))
             recess("x", plane, out, yc, lvl, lvl + 1.35, 0.58, depth=0.18)
             glazing("x", plane, out, yc, lvl + 0.10, lvl + 1.88, 0.58, 0.18, nh=1)
@@ -1023,7 +1031,7 @@ for sgn in (-1, 1):                                            # jouees et colon
     box(_cx - 0.34, _cx + 0.34, FP - 2.34, FP - 1.66, 3.52, 3.68, "pierre")
     box(_cx - 0.26, _cx + 0.26, FP - 2.26, FP - 1.74, 3.68, 4.55, "pierre")
 box(XC - 2.95, XC + 2.95, FP - 2.2, FP - 0.02, 4.55, 5.10, "pierre")
-gable(XC - 3.1, XC + 3.1, FP - 2.35, FP, 5.10, 6.95, "tuile", "pierre")
+gable(XC - 3.1, XC + 3.1, FP - 2.35, FP - 0.02, 5.10, 6.95, "tuile", "pierre")
 
 # 6b. niches maconnees encadrant l'entree, et baies du premier etage
 for sgn in (-1, 1):
@@ -1284,7 +1292,7 @@ for _xa, _xb, _c in ((X_W + 0.60, X_NW, (X_W + 0.60 + X_NW) / 2),
 wall_panel("y", I_Y1 - 0.05, -1, X_NW, X_NE, I_FLOOR, Z_CEIL,
            [(APSE_CX, APS_R, I_FLOOR, Z_INSCR)], mat="arcsurr", nz=54)
 for xa, xb in ((X_W + 0.60, X_NW), (X_NE, X_E - 0.60)):      # bouts de bas-cote
-    box(xa, xb, I_Y0, I_Y0 + 0.05, I_FLOOR, Z_AISLE_CEIL, "enduitint")
+    box(xa, xb, I_Y0 + 0.02, I_Y0 + 0.07, I_FLOOR, Z_AISLE_CEIL, "enduitint")
 # Mur de claire-voie vu de la nef : il repose sur l'arcade, donc il commence
 # juste au-dessus de la clef des arcs (naissance + rayon) et monte au plafond.
 # Sans lui on voit la brique du mur porteur par l'interieur.
@@ -1682,9 +1690,10 @@ for dx in (-1.675, 1.675):
 # mitoyen entre l'eglise et le corps de logis, a y = -11,08. La tribune y
 # gagne d'etre moins profonde de 1,47 m — elle etait dessinee trop creuse.
 CF_FOND = Y_NARTH - 2.08
-box(X_NW, X_NE, CF_FOND - 0.91, CF_FOND, Z_NSLAB, Z_CEIL, "enduitint")
+box(X_NW + 0.03, X_NE - 0.03, CF_FOND - 0.91, CF_FOND, Z_NSLAB, Z_CEIL,
+    "enduitint")
 # 7,20 m de large : la toile occupe presque toute la largeur de la tribune
-box(XC - 3.60, XC + 3.60, CF_FOND, CF_FOND + 0.04, 9.28, 11.53, "tableau")
+box(XC - 3.60, XC + 3.60, CF_FOND + 0.01, CF_FOND + 0.05, 9.28, 11.53, "tableau")
 
 
 # ======================================== ETAGES DU CORPS SUR RUE
@@ -1710,9 +1719,13 @@ PY_COUL  = 11.84                  # axe du mur de couloir (e = 0.14)
 Z_ET1, Z_ET2, Z_TOITURE = Z_NSLAB, 9.80, Z_AISLE_HIGH
 Z_ET3 = Z_AISLE_HIGH + 0.30       # sol des terrasses et du dernier logement
 DALLE = 0.22
-PH1 = Z_ET2 - Z_ET1 - DALLE
+# 4 cm de plus : arasees au nu de la dalle, les cloisons papillotaient avec.
+PH1 = Z_ET2 - Z_ET1 - DALLE + 0.04
 PH2 = Z_TOITURE - Z_ET2 - DALLE
-PH3 = 2.85
+# Le logement du troisieme est loge SOUS le rampant de la nef. Le rampant
+# descend a 18,10 m au droit de ses murs pignons (21,00 au faite, 16,85 a
+# l'egout, demi-portee 7,75) : au-dela, les cloisons perçaient la couverture.
+PH3 = 17.95 - Z_ET3
 
 
 def _mx(px):
@@ -1770,7 +1783,9 @@ def piece_xy(niv, nom, x0, y0, x1, y1, z):
 # ---------------------------------------------------------------- plancher
 def plancher_troue(z, trous, mat="solint"):
     """Dalle sur l'emprise, evidee des tremies."""
-    bornes = sorted({PY0 - 0.91, PY1 + 1.26}
+    # 2 cm en retrait des nus : la tranche de dalle tombait sinon dans le plan
+    # du mur mitoyen et dans celui de la facade.
+    bornes = sorted({PY0 - 0.89, PY1 + 1.24}
                     | {v for t in trous for v in (t[1], t[3])})
     for ya, yb in zip(bornes, bornes[1:]):
         if yb - ya < 1e-6:
@@ -1802,17 +1817,21 @@ def refend(a0, a1, fixe, e, z0, z1, axe, portes=(), mat="enduitint", ht=2.15,
         coupes += [c - w / 2, c + w / 2]
     coupes.append(a1)
 
-    def seg(u, v, zz0, zz1, m):
+    def seg(u, v, zz0, zz1, m, e2=None):
+        tt = t if e2 is None else e2
         if v - u < 1e-4:
             return
         if axe == "x":
-            pbox(fixe - t, u, fixe + t, v, zz0, zz1, m)
+            pbox(fixe - tt, u, fixe + tt, v, zz0, zz1, m)
         else:
-            pbox(u, fixe - t, v, fixe + t, zz0, zz1, m)
+            pbox(u, fixe - tt, v, fixe + tt, zz0, zz1, m)
 
     for k in range(0, len(coupes) - 1, 2):            # les pleins
         seg(coupes[k], coupes[k + 1], z0, z1, mat)
-        seg(coupes[k], coupes[k + 1], z0 + POCHE0, z0 + POCHE1, "poche")
+        # Rentree de 12 mm : posee au nu du mur, elle etait coplanaire avec
+        # lui et l'ecran se mettait a papilloter.
+        seg(coupes[k] + 0.012, coupes[k + 1] - 0.012,
+            z0 + POCHE0, z0 + POCHE1, "poche", max(0.01, t - 0.012))
     for k in range(1, len(coupes) - 1, 2):            # les linteaux
         seg(coupes[k], coupes[k + 1], z0 + ht, z1, mat)
         if vantail and e > 0:
@@ -1892,28 +1911,39 @@ def _lerp(a, b, k, val):
 
 
 # ---------------------------------------------------------------- mobilier
-def cuisine(px0, py0, px1, py1, z):
+def cuisine(px0, py0, px1, py1, z, ori=0):
     """Cuisine relevee sur les photographies de l'annonce : lineaire blanc
     laque, plan de travail anthracite, hotte inox, refrigerateur en bout,
-    table blanche et chaises noires au milieu."""
+    table blanche et chaises noires au milieu.
+
+    ori=0 : le lineaire s'adosse au mur nord ; ori=1 : au mur sud. Au troisieme
+    etage la porte s'ouvre au nord — le piano lui barrait le passage."""
+    def cy_(v):                       # v : distance au mur d'adossement
+        return py0 + v if ori == 0 else py1 - v
+
+    def cb(a0, v0, a1, v1, z0, z1, mat):
+        b0, b1 = sorted((cy_(v0), cy_(v1)))
+        pbox(a0, b0, a1, b1, z0, z1, mat)
+
     ln0, ln1 = px0 + 0.15, px1 - 1.05
-    pbox(ln0, py0 + 0.02, ln1, py0 + 0.62, z, z + 0.86, "laque")       # caissons
-    pbox(ln0, py0 + 0.00, ln1, py0 + 0.64, z + 0.86, z + 0.90, "plantrav")
-    pbox(ln0, py0 + 0.02, ln1 - 1.30, py0 + 0.38, z + 1.45, z + 2.10, "laque")
-    xh = ln1 - 1.55                                                    # hotte
-    pbox(xh - 0.45, py0 + 0.02, xh + 0.45, py0 + 0.58, z + 1.55, z + 1.62, "inox")
-    pbox(xh - 0.28, py0 + 0.02, xh + 0.28, py0 + 0.40, z + 1.62, z + 2.20, "inox")
-    pbox(xh - 0.42, py0 + 0.05, xh + 0.42, py0 + 0.60, z + 0.89, z + 0.91, "sombre")
-    pbox(px1 - 0.95, py0 + 0.02, px1 - 0.25, py0 + 0.70, z, z + 1.85, "laque")
-    pbox(px1 - 0.93, py0 + 0.68, px1 - 0.27, py0 + 0.70, z + 0.90, z + 0.94, "sombre")
-    tx, ty = (px0 + px1) / 2, (py0 + py1) / 2 + 0.35                   # table
+    cb(ln0, 0.02, ln1, 0.62, z, z + 0.86, "laque")            # caissons
+    cb(ln0, 0.00, ln1, 0.64, z + 0.86, z + 0.90, "plantrav")
+    cb(ln0, 0.02, ln1 - 1.30, 0.38, z + 1.45, z + 2.10, "laque")
+    xh = ln1 - 1.55                                           # hotte
+    cb(xh - 0.45, 0.02, xh + 0.45, 0.58, z + 1.55, z + 1.62, "inox")
+    cb(xh - 0.28, 0.02, xh + 0.28, 0.40, z + 1.62, z + 2.20, "inox")
+    cb(xh - 0.42, 0.05, xh + 0.42, 0.60, z + 0.89, z + 0.91, "sombre")
+    cb(px1 - 0.95, 0.02, px1 - 0.25, 0.70, z, z + 1.85, "laque")
+    cb(px1 - 0.93, 0.68, px1 - 0.27, 0.70, z + 0.90, z + 0.94, "sombre")
+    tx = (px0 + px1) / 2                                      # table
+    ty = cy_((py1 - py0) / 2 + 0.35 if ori == 0 else (py1 - py0) / 2 + 0.35)
     pbox(tx - 0.80, ty - 0.45, tx + 0.80, ty + 0.45, z + 0.72, z + 0.76, "laque")
     for sx in (tx - 0.74, tx + 0.70):
         for sy in (ty - 0.39, ty + 0.35):
             pbox(sx, sy, sx + 0.04, sy + 0.04, z, z + 0.72, "laque")
-    for cx, cy, ori in ((tx - 0.45, ty - 0.78, 0), (tx + 0.45, ty - 0.78, 0),
-                        (tx - 0.45, ty + 0.78, 1), (tx + 0.45, ty + 0.78, 1)):
-        chaise(cx, cy, z, ori)
+    for cx, cyy, o in ((tx - 0.45, ty - 0.78, 0), (tx + 0.45, ty - 0.78, 0),
+                       (tx - 0.45, ty + 0.78, 1), (tx + 0.45, ty + 0.78, 1)):
+        chaise(cx, cyy, z, o)
 
 
 def lustre(px0, py0, px1, py1, z, hp, n=1):
@@ -1936,7 +1966,6 @@ def bains(px0, py0, px1, py1, z):
     pbox(px0 + 0.08, py0 + 0.10, px0 + 0.48, py0 + 0.74, z + 0.40, z + 0.44, "laque")
     pbox(px0 + 0.62, py0 + 0.10, px0 + 1.20, py0 + 0.56, z + 0.82, z + 0.90, "laque")
     pbox(px0 + 0.86, py0 + 0.12, px0 + 0.96, py0 + 0.22, z + 0.90, z + 1.16, "inox")
-    # cabine de douche, dans l'angle oppose
     cx, cy = px1 - 0.95, py1 - 0.95
     pbox(cx - 0.45, cy - 0.45, cx + 0.45, cy + 0.45, z, z + 0.06, "solbain")
     pbox(cx - 0.45, cy - 0.45, cx - 0.41, cy + 0.45, z + 0.06, z + 1.95, "vitrage")
@@ -2022,8 +2051,10 @@ def doublage(z, hp):
     fh = [h for h in FACADE + BANDH if dans(h)]
     fh += [h for v in BLOCKS.values() for h in v if dans(h)]
     wall_panel("y", YD, +1, X_W + 0.94, X_E - 0.98, z, z1, fh, mat="enduitint")
+    # L'ebrasement du doublage commence APRES celui du parement (0,18 a 0,34 m
+    # selon les baies) : sinon les deux se superposent et l'ecran papillote.
     for uc, hw, zs, zp in fh:
-        tunnel_y(Y_F, YD, uc, zs, zp, hw)
+        tunnel_y(Y_F + 0.42, YD, uc, zs, zp, hw)
 
     # --- gouttereaux ouest et est
     for pl, ins, HS in ((X_W, X_W + 0.94, AISLE_W_HOLES),
@@ -2032,14 +2063,16 @@ def doublage(z, hp):
         hs = [h for h in HS if Y_F < h[0] < _my(PY0) and dans(h)]
         wall_panel("x", ins, ou, Y_F, _my(PY0), z, z1, hs, mat="enduitint")
         for vc, hw, zs, zp in hs:
-            tunnel_x(min(pl, ins), max(pl, ins), vc, zs, zp, hw)
+            a = pl + (0.26 if pl < 0 else -0.26)
+            tunnel_x(min(a, ins), max(a, ins), vc, zs, zp, hw)
 
 
 def poche_enveloppe(z):
-    """Les murs de pourtour appartiennent a la nef : on leur pose leur plaque."""
-    poche(0.00, PY0 - 0.91, PX0, PY1 + 1.26, z)          # gouttereau ouest
-    poche(PX1, PY0 - 0.91, 25.44, PY1 + 1.26, z)         # gouttereau est
-    poche(PX0, PY1, PX1, PY1 + 1.26, z)                  # facade sur rue
+    """Les murs de pourtour appartiennent a la nef : on leur pose leur plaque,
+    rentree de 6 cm pour ne pas venir au nu des parements."""
+    poche(0.06, PY0 - 0.85, PX0 - 0.06, PY1 + 1.20, z)   # gouttereau ouest
+    poche(PX1 + 0.06, PY0 - 0.85, 25.38, PY1 + 1.20, z)  # gouttereau est
+    poche(PX0, PY1 + 0.06, PX1, PY1 + 1.20, z)           # facade sur rue
 
 
 # =========================================================== PREMIER ETAGE
@@ -2071,7 +2104,7 @@ def travees(joints, z, hp, nomsud, niv, sol="solcham"):
 def etage_commun(z, hp, niv):
     """Ce qui est identique au premier et au second : mitoyen, couloir, cage,
     bande nord ouest, cloisons de la cage."""
-    refend(0.0, 25.44, PY_MIT, 0.91, z, z + hp, "y", vantail=False,
+    refend(0.06, 25.38, PY_MIT, 0.91, z, z + hp, "y", vantail=False,
            mat="enduitint")
     # Le mur de couloir n'est PAS trace ici : chaque etage a ses propres portes,
     # et un mur plein pose avant elles les rebouchait toutes.
@@ -2173,7 +2206,8 @@ for _a, _b, _c, _d in ((VIDE[0], VIDE[1], VIDE[2], VIDE[1] + 0.07),
 # Sous le rampant de la nef, derriere le pignon de facade : deux chambres,
 # une cuisine, deux cabinets et deux degagements. De part et d'autre, les
 # terrasses ; au nord, le comble de l'eglise (SOTTOTETTO CHIESA).
-plancher_troue(Z_TOITURE, [SALON, CAGE], "solint")
+# 4 cm plus bas : posee au nu de l'arase des blocs, elle papillotait avec.
+plancher_troue(Z_TOITURE - 0.04, [SALON, CAGE], "solint")
 P3 = (7.60, 10.90, 17.85, 16.10)
 pbox(P3[0], P3[1], P3[2], P3[3], Z_ET3 - 0.22, Z_ET3, "solint", bottom=True)
 for _f, _e, _ax in ((P3[1], 0.30, "y"), (P3[0], 0.30, "x"), (P3[2], 0.30, "x")):
@@ -2193,7 +2227,7 @@ chambre_meubles(P3[0], 11.30, 11.30, 14.60, Z_ET3)
 piece(3, "1A", 14.55, 11.30, P3[2], 14.60, Z_ET3, "solcham", hp=PH3)
 chambre_meubles(14.55, 11.30, P3[2], 14.60, Z_ET3)
 piece(3, "Cuisine", 11.30, 11.30, 14.55, P3[3], Z_ET3, "solcuis", hp=PH3)
-cuisine(11.30, 11.30, 14.55, P3[3], Z_ET3)
+cuisine(11.30, 11.30, 14.55, P3[3], Z_ET3, ori=1)
 piece(3, "WC2", P3[0], 14.60, 9.30, P3[3], Z_ET3, "solbain", hp=PH3)
 bains(P3[0], 14.60, 9.30, P3[3], Z_ET3)
 piece(3, "Degagement 2", 9.30, 14.60, 11.30, P3[3], Z_ET3, "solcham", hp=PH3)
@@ -2219,10 +2253,10 @@ for _z0, _z1 in ((I_FLOOR, Z_ET1), (Z_ET1, Z_ET2), (Z_ET2, Z_TOITURE),
     escalier(CAGE[0], CAGE[1], CAGE[2], CAGE[3], _z0, _z1)
 
 # --------------------------------------- poche du rez : pourtour de l'eglise
-poche_xy(X_W, Y_F, X_W + 0.94, Y_B, I_FLOOR)
-poche_xy(X_E - 0.94, Y_F, X_E, Y_B, I_FLOOR)
-poche_xy(X_W, Y_F, X_E, Y_F + 1.26, I_FLOOR)
-poche_xy(X_W, Y_B - 0.90, X_E, Y_B, I_FLOOR)
+poche_xy(X_W + 0.06, Y_F + 0.06, X_W + 0.94, Y_B - 0.06, I_FLOOR)
+poche_xy(X_E - 0.94, Y_F + 0.06, X_E - 0.06, Y_B - 0.06, I_FLOOR)
+poche_xy(X_W + 0.06, Y_F + 0.06, X_E - 0.06, Y_F + 1.20, I_FLOOR)
+poche_xy(X_W + 0.06, Y_B - 0.90, X_E - 0.06, Y_B - 0.06, I_FLOOR)
 for _xw in (X_NW, X_NE):                       # murs de nef
     poche_xy(_xw - 0.45, Y_NARTH, _xw + 0.45, Y_B, I_FLOOR)
 
@@ -2237,7 +2271,7 @@ piece_xy(0, "Abside", APSE_CX - 3.0, Y_B + 3.0, APSE_CX + 3.0, Y_B + 7.0, I_FLOO
 with open(os.path.dirname(os.path.abspath(__file__)) + "/../reconstruction/pieces.json", "w") as _f:
     json.dump(PIECES, _f)
 # --- 7. sol de reference (dalle mince, aide a la lecture du volume)
-box(X_W - 1.2, X_E + 1.2, Y_F - 3.2, Y_B + 11.0, -0.35, 0.0, "sol")
+box(X_W - 1.2, X_E + 1.2, Y_F - 3.2, Y_B + 11.0, -0.35, -0.01, "sol")
 
 # =================================================================== ECRITURE
 MTL = {

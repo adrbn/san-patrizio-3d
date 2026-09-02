@@ -114,8 +114,9 @@ textarea{width:100%; min-height:180px; background:var(--paper); color:var(--ink)
     <div>
       <p class="eyebrow">San Patrizio a Villa Ludovisi · relevé</p>
       <h1>Plan du corps sur rue</h1>
-      <p class="lede">Emprise réelle&nbsp;: 25,44&nbsp;× 16,77&nbsp;m, relevée sur le
-        scan photogrammétrique. Trace les pièces à l’échelle&nbsp;; le contour et les
+      <p class="lede">Emprise réelle&nbsp;: 25,44&nbsp;× 14,69&nbsp;m, relevée sur les planches
+        DoveVivo. L’état affiché est <b>celui du modèle 3D</b>&nbsp;: corrige-le,
+        et je reporterai les corrections dans le modèle. Le contour et les
         murs porteurs sont fixes. Pour une pièce biscornue, trace plusieurs
         rectangles, sélectionne-les avec <b>Maj</b> et <b>Fusionne</b>.</p>
     </div>
@@ -127,11 +128,12 @@ textarea{width:100%; min-height:180px; background:var(--paper); color:var(--ink)
       <button type="button" data-lvl="0">Rez · atrium</button>
       <button type="button" data-lvl="1" aria-pressed="true">1ᵉʳ étage</button>
       <button type="button" data-lvl="2">2ᵉ étage</button>
+      <button type="button" data-lvl="3">3ᵉ étage</button>
     </div>
     <span class="grow"></span>
     <button type="button" id="bMerge">Fusionner</button>
     <button type="button" id="bSplit">Séparer</button>
-    <button type="button" id="bAgence">Plan d’agence</button>
+    <button type="button" id="bAgence">Recharger le modèle</button>
     <button type="button" id="bDup">Dupliquer</button>
     <button type="button" id="bDel">Supprimer</button>
     <button type="button" id="bCopy">Copier le plan</button>
@@ -139,7 +141,7 @@ textarea{width:100%; min-height:180px; background:var(--paper); color:var(--ink)
   </div>
 
   <div class="sheet" id="sheet">
-    <svg id="svg" viewBox="-1.2 -1.2 27.84 19.17" aria-label="Plan de l’étage"></svg>
+    <svg id="svg" viewBox="-1.2 -1.2 27.84 17.09" aria-label="Plan de l’étage"></svg>
   </div>
 
   <div class="panel" id="panel" hidden>
@@ -191,7 +193,7 @@ textarea{width:100%; min-height:180px; background:var(--paper); color:var(--ink)
 /* ── cotes relevees du corps sur rue ──────────────────────────
    Origine au coin nord-ouest. x vers l'est, y vers la rue (sud).
    Les murs de nef traversent le corps : ils delimitent les deux ailes. */
-const W = 25.44, H = 16.77, WALL = 0.60;
+const W = 25.44, H = 14.69, WALL = 0.60;   // profondeur relevee sur les planches DoveVivo
 const NAVE_W0 = 5.18, NAVE_W1 = 19.68;
 const SNAP = 0.25;
 
@@ -217,24 +219,511 @@ const REZ = (() => {
   return out;
 })();
 
-/* Lecture du plan d'agence du 1er etage — a corriger, ce n'est qu'une lecture. */
-const AGENCE = [
-  R("Cuisine — salle à manger", "cuisine", [P(0.8, 0.7, 6.0, 4.5)]),
-  R("Salon", "living", [P(7.4, 0.7, 10.4, 8.2)]),
-  R("Séjour est", "living", [P(18.2, 0.7, 6.4, 4.5)]),
-  R("Escalier", "escalier", [P(19.6, 5.4, 5.0, 4.0)]),
-  R("Chambre 7", "chambre", [P(2.9, 5.2, 3.9, 3.5)]),
-  R("Couloir", "couloir", [P(2.9, 8.9, 17.0, 2.1)]),
-  R("Sanitaires", "sanitaire", [P(0.8, 9.4, 2.6, 4.0)]),
-  R("Chambre 6", "chambre", [P(3.9, 11.0, 3.0, 4.6)]),
-  R("Chambre 5", "chambre", [P(6.9, 11.0, 3.0, 4.6)]),
-  R("Chambre 4", "chambre", [P(11.4, 11.0, 3.2, 4.6)]),
-  R("Chambre 3", "chambre", [P(15.6, 11.0, 3.0, 4.6)]),
-  R("Chambre 2", "chambre", [P(19.6, 11.0, 2.8, 4.6)]),
-  R("Chambre 1", "chambre", [P(22.4, 9.9, 2.2, 5.7)]),
-];
+/* Etat courant du modele 3D, exporte par build_church.py. C'est ce que le
+   generateur trace aujourd'hui : les corrections faites ici y seront
+   reportees. */
+const ACTUEL = {
+ "1": [
+  {
+   "n": "WC1",
+   "k": "sanitaire",
+   "parts": [
+    {
+     "x": 0.94,
+     "y": 9.83,
+     "w": 2.93,
+     "h": 3.6
+    }
+   ]
+  },
+  {
+   "n": "6A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 3.99,
+     "y": 9.83,
+     "w": 2.8,
+     "h": 3.6
+    }
+   ]
+  },
+  {
+   "n": "5A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 7.39,
+     "y": 9.83,
+     "w": 3.37,
+     "h": 3.6
+    }
+   ]
+  },
+  {
+   "n": "4A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 10.86,
+     "y": 9.83,
+     "w": 3.72,
+     "h": 3.6
+    }
+   ]
+  },
+  {
+   "n": "3A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 14.68,
+     "y": 9.83,
+     "w": 3.37,
+     "h": 3.6
+    }
+   ]
+  },
+  {
+   "n": "2A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 18.65,
+     "y": 9.83,
+     "w": 3.1,
+     "h": 3.6
+    }
+   ]
+  },
+  {
+   "n": "1A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 21.87,
+     "y": 9.83,
+     "w": 2.59,
+     "h": 3.6
+    }
+   ]
+  },
+  {
+   "n": "WC2",
+   "k": "sanitaire",
+   "parts": [
+    {
+     "x": 0.94,
+     "y": 8.3,
+     "w": 1.26,
+     "h": 1.39
+    }
+   ]
+  },
+  {
+   "n": "Couloir",
+   "k": "couloir",
+   "parts": [
+    {
+     "x": 2.2,
+     "y": 8.3,
+     "w": 22.26,
+     "h": 1.39
+    }
+   ]
+  },
+  {
+   "n": "Cuisine",
+   "k": "cuisine",
+   "parts": [
+    {
+     "x": 0.94,
+     "y": 1.26,
+     "w": 5.85,
+     "h": 3.22
+    }
+   ]
+  },
+  {
+   "n": "7A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 0.94,
+     "y": 5.1,
+     "w": 4.13,
+     "h": 2.8
+    }
+   ]
+  },
+  {
+   "n": "Degagement",
+   "k": "couloir",
+   "parts": [
+    {
+     "x": 5.23,
+     "y": 4.79,
+     "w": 1.56,
+     "h": 3.11
+    }
+   ]
+  },
+  {
+   "n": "Salon commun",
+   "k": "living",
+   "parts": [
+    {
+     "x": 7.6,
+     "y": 1.26,
+     "w": 10.25,
+     "h": 6.64
+    }
+   ]
+  },
+  {
+   "n": "Salle d'etude",
+   "k": "living",
+   "parts": [
+    {
+     "x": 18.65,
+     "y": 1.26,
+     "w": 5.81,
+     "h": 3.22
+    }
+   ]
+  },
+  {
+   "n": "Escalier",
+   "k": "escalier",
+   "parts": [
+    {
+     "x": 19.86,
+     "y": 4.79,
+     "w": 4.6,
+     "h": 3.11
+    }
+   ]
+  }
+ ],
+ "2": [
+  {
+   "n": "WC4",
+   "k": "sanitaire",
+   "parts": [
+    {
+     "x": 0.94,
+     "y": 9.83,
+     "w": 2.01,
+     "h": 0.62
+    }
+   ]
+  },
+  {
+   "n": "WC3",
+   "k": "sanitaire",
+   "parts": [
+    {
+     "x": 3.05,
+     "y": 9.83,
+     "w": 2.6,
+     "h": 0.62
+    }
+   ]
+  },
+  {
+   "n": "WC2",
+   "k": "sanitaire",
+   "parts": [
+    {
+     "x": 20.3,
+     "y": 9.83,
+     "w": 2.1,
+     "h": 0.62
+    }
+   ]
+  },
+  {
+   "n": "WC1",
+   "k": "sanitaire",
+   "parts": [
+    {
+     "x": 22.5,
+     "y": 9.83,
+     "w": 1.96,
+     "h": 0.62
+    }
+   ]
+  },
+  {
+   "n": "5A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 0.94,
+     "y": 10.52,
+     "w": 5.85,
+     "h": 2.91
+    }
+   ]
+  },
+  {
+   "n": "4A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 7.39,
+     "y": 9.83,
+     "w": 3.37,
+     "h": 3.6
+    }
+   ]
+  },
+  {
+   "n": "3A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 10.86,
+     "y": 9.83,
+     "w": 3.72,
+     "h": 3.6
+    }
+   ]
+  },
+  {
+   "n": "2A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 14.68,
+     "y": 9.83,
+     "w": 3.37,
+     "h": 3.6
+    }
+   ]
+  },
+  {
+   "n": "1A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 18.65,
+     "y": 10.52,
+     "w": 5.81,
+     "h": 2.91
+    }
+   ]
+  },
+  {
+   "n": "Couloir",
+   "k": "couloir",
+   "parts": [
+    {
+     "x": 0.94,
+     "y": 8.3,
+     "w": 23.52,
+     "h": 1.39
+    }
+   ]
+  },
+  {
+   "n": "Cuisine",
+   "k": "cuisine",
+   "parts": [
+    {
+     "x": 0.94,
+     "y": 1.26,
+     "w": 5.85,
+     "h": 3.22
+    }
+   ]
+  },
+  {
+   "n": "6A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 0.94,
+     "y": 5.1,
+     "w": 4.13,
+     "h": 2.8
+    }
+   ]
+  },
+  {
+   "n": "Degagement",
+   "k": "couloir",
+   "parts": [
+    {
+     "x": 5.23,
+     "y": 4.79,
+     "w": 1.56,
+     "h": 3.11
+    }
+   ]
+  },
+  {
+   "n": "Salle cinema",
+   "k": "living",
+   "parts": [
+    {
+     "x": 18.65,
+     "y": 1.26,
+     "w": 5.81,
+     "h": 3.22
+    }
+   ]
+  },
+  {
+   "n": "Escalier",
+   "k": "escalier",
+   "parts": [
+    {
+     "x": 19.86,
+     "y": 4.79,
+     "w": 4.6,
+     "h": 3.11
+    }
+   ]
+  },
+  {
+   "n": "Vide sur salon",
+   "k": "living",
+   "parts": [
+    {
+     "x": 9.0,
+     "y": 2.02,
+     "w": 7.45,
+     "h": 4.5
+    }
+   ]
+  }
+ ],
+ "3": [
+  {
+   "n": "2A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 7.6,
+     "y": 9.22,
+     "w": 3.7,
+     "h": 3.3
+    }
+   ]
+  },
+  {
+   "n": "1A",
+   "k": "chambre",
+   "parts": [
+    {
+     "x": 14.55,
+     "y": 9.22,
+     "w": 3.3,
+     "h": 3.3
+    }
+   ]
+  },
+  {
+   "n": "Cuisine",
+   "k": "cuisine",
+   "parts": [
+    {
+     "x": 11.3,
+     "y": 9.22,
+     "w": 3.25,
+     "h": 4.8
+    }
+   ]
+  },
+  {
+   "n": "WC2",
+   "k": "sanitaire",
+   "parts": [
+    {
+     "x": 7.6,
+     "y": 12.52,
+     "w": 1.7,
+     "h": 1.5
+    }
+   ]
+  },
+  {
+   "n": "Degagement 2",
+   "k": "couloir",
+   "parts": [
+    {
+     "x": 9.3,
+     "y": 12.52,
+     "w": 2.0,
+     "h": 1.5
+    }
+   ]
+  },
+  {
+   "n": "Degagement 1",
+   "k": "couloir",
+   "parts": [
+    {
+     "x": 14.55,
+     "y": 12.52,
+     "w": 1.75,
+     "h": 1.5
+    }
+   ]
+  },
+  {
+   "n": "WC1",
+   "k": "sanitaire",
+   "parts": [
+    {
+     "x": 16.3,
+     "y": 12.52,
+     "w": 1.55,
+     "h": 1.5
+    }
+   ]
+  },
+  {
+   "n": "Comble de l'eglise",
+   "k": "autre",
+   "parts": [
+    {
+     "x": 5.18,
+     "y": -2.08,
+     "w": 14.5,
+     "h": 10.9
+    }
+   ]
+  },
+  {
+   "n": "Terrasse ouest",
+   "k": "autre",
+   "parts": [
+    {
+     "x": 0.0,
+     "y": -2.08,
+     "w": 5.18,
+     "h": 16.27
+    }
+   ]
+  },
+  {
+   "n": "Terrasse est",
+   "k": "autre",
+   "parts": [
+    {
+     "x": 19.68,
+     "y": -2.08,
+     "w": 5.76,
+     "h": 16.27
+    }
+   ]
+  }
+ ]
+};
 
-let lvl = 1, rooms = { 0: REZ, 1: [], 2: [] }, sel = [];
+let lvl = 1, rooms = { 0: REZ, 1: [], 2: [], 3: [] }, sel = [];
 
 /* Les plans traces avant la fusion n'avaient qu'un rectangle par piece. */
 const migre = a => (a || []).map(r => r.parts ? r
@@ -242,17 +731,22 @@ const migre = a => (a || []).map(r => r.parts ? r
 
 const KEY = "sanpatrizio.plan.v2";
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify({ 1: rooms[1], 2: rooms[2] })); }
+  try { localStorage.setItem(KEY,
+    JSON.stringify({ 1: rooms[1], 2: rooms[2], 3: rooms[3] })); }
   catch (e) { /* navigation privee : on continue sans sauvegarde */ }
 }
 function load() {
   try {
     const d = JSON.parse(localStorage.getItem(KEY) ||
                          localStorage.getItem("sanpatrizio.plan.v1") || "null");
-    if (d) { rooms[1] = migre(d[1]); rooms[2] = migre(d[2]); }
+    if (d) { rooms[1] = migre(d[1]); rooms[2] = migre(d[2]); rooms[3] = migre(d[3]); }
   } catch (e) { /* donnees illisibles : on repart du plan vide */ }
 }
 load();
+// Premiere ouverture : on part de ce que le generateur trace aujourd'hui.
+for (const k of ["1", "2", "3"])
+  if (!rooms[k] || !rooms[k].length)
+    rooms[k] = JSON.parse(JSON.stringify(ACTUEL[k] || []));
 
 /* ── geometrie d'une piece ──────────────────────────────────── */
 const aire = r => r.parts.reduce((s, p) => s + p.w * p.h, 0);
@@ -434,13 +928,10 @@ document.getElementById("bSplit").addEventListener("click", () => {
   sel = neuf; save(); draw(); form();
 });
 document.getElementById("bAgence").addEventListener("click", () => {
-  if (rooms[1].length && !confirm("Remplacer le 1ᵉʳ étage par ma lecture du plan d’agence ?"))
-    return;
-  rooms[1] = JSON.parse(JSON.stringify(AGENCE));
-  lvl = 1; sel = [];
-  document.querySelectorAll("[data-lvl]").forEach(o =>
-    o.setAttribute("aria-pressed", o.dataset.lvl === "1" ? "true" : "false"));
-  save(); draw(); form(); flash("Lecture du plan d’agence chargée");
+  if (rooms[lvl] && rooms[lvl].length &&
+      !confirm("Remplacer ce niveau par l\u2019état actuel du modèle 3D ?")) return;
+  rooms[lvl] = JSON.parse(JSON.stringify(ACTUEL[lvl] || []));
+  sel = []; save(); draw(); form(); flash("État du modèle rechargé");
 });
 document.getElementById("bDel").addEventListener("click", () => {
   sel.filter(r => !r.fixe).forEach(r => rooms[lvl].splice(rooms[lvl].indexOf(r), 1));
@@ -472,7 +963,8 @@ document.querySelectorAll("[data-lvl]").forEach(b => b.addEventListener("click",
 /* ── echange ────────────────────────────────────────────────── */
 document.getElementById("bCopy").addEventListener("click", async () => {
   const txt = JSON.stringify({ plan: "san-patrizio-corps-sur-rue",
-    emprise: [W, H], niveaux: { "1": rooms[1], "2": rooms[2] } }, null, 1);
+    emprise: [W, H],
+    niveaux: { "1": rooms[1], "2": rooms[2], "3": rooms[3] } }, null, 1);
   try { await navigator.clipboard.writeText(txt); flash("Plan copié"); }
   catch (e) { dlgOpen(txt); }
 });
@@ -485,6 +977,7 @@ document.getElementById("dlgOk").addEventListener("click", () => {
     const d = JSON.parse(dlgTxt.value), n = d.niveaux || d;
     if (n["1"]) rooms[1] = migre(n["1"]);
     if (n["2"]) rooms[2] = migre(n["2"]);
+    if (n["3"]) rooms[3] = migre(n["3"]);
     sel = []; save(); draw(); form(); dlg.close(); flash("Plan chargé");
   } catch (e) { alert("Ce texte n’est pas un plan lisible."); }
 });
