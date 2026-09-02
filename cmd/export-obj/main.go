@@ -8,10 +8,13 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/retroplasma/flyover-reverse-engineering/pkg/fly"
 	"github.com/retroplasma/flyover-reverse-engineering/pkg/fly/c3m"
@@ -25,6 +28,8 @@ import (
 )
 
 var l = log.New(os.Stderr, "", 0)
+
+var errEmptyTile = errors.New("empty tile (no data after retries)")
 
 func printUsage(msg string) {
 	if msg != "" {
@@ -145,41 +150,90 @@ func main() {
 		exDone <- 1
 	}()
 
-	// loop over area and altitude
+	// loop over area and altitude.
+	//
+	// Apple retired the C3MM_1 (style 14) octree that checkTile used to consult,
+	// so it now 404s everywhere. Instead we probe the C3M tiles (style 15)
+	// directly and skip the ones that don't exist (404 or jpeg placeholder).
 	for dx := -tryXY; dx <= tryXY; dx++ {
 		for dy := -tryXY; dy <= tryXY; dy++ {
-			for h := 0; h < int(tryH); h++ {
+			dx, dy := dx, dy
+			sem <- 1
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer func() { <-sem }()
 				xn := x + int(dx)
 				yn := y + int(dy)
-				hasTile, err := ctx.checkTile(p, z, yn, xn, h)
-				if err != nil {
-					panic(err)
-				}
-				if !hasTile {
-					continue
-				}
-
-				// async get tile
-				sem <- 1
-				wg.Add(1)
-				dx, dy, h := dx, dy, h
-				go func() {
-					defer wg.Done()
+				// Heights are contiguous from 0. Walk up until tiles run out:
+				// tolerate initial gaps, stop once we've seen tiles and then miss.
+				seen := false
+				for h := 0; h < int(tryH); h++ {
 					tile, err := ctx.getTile(p, z, yn, xn, h)
 					if err != nil {
-						panic(err)
+						if isMissing(err) {
+							if seen {
+								break // heights exhausted for this column
+							}
+							continue // genuine gap, keep scanning up
+						}
+						// unexpected (e.g. parse error on odd content) — skip, don't abort
+						l.Println("skip", dx, dy, "h =", h, ":", err)
+						continue
 					}
+					seen = true
 					l.Println("Exporting", dx, dy, "h =", h)
 					ex <- tile
-					<-sem
-				}()
-			}
+				}
+			}()
 		}
 	}
 	wg.Wait() // wait for all tile loads to finish
 	close(ex) // no more tiles sent to exporter
 	<-exDone  // wait till all tiles are exported
 	l.Println(xp, "exported")
+
+	// Apple ships textures as HEIC now; the .mtl references .jpg. Transcode any
+	// HEIC the exporter wrote so the OBJ's map_Kd files exist and open anywhere.
+	if n := transcodeHEIC(exportDir); n > 0 {
+		l.Printf("transcoded %d HEIC texture(s) to JPEG", n)
+	}
+}
+
+// transcodeHEIC converts every *.heic in dir to a sibling *.jpg and removes the
+// HEIC. Uses macOS `sips`, falling back to `heif-convert` or ImageMagick.
+func transcodeHEIC(dir string) int {
+	heics, _ := filepath.Glob(filepath.Join(dir, "*.heic"))
+	count := 0
+	for _, hc := range heics {
+		jpg := strings.TrimSuffix(hc, ".heic") + ".jpg"
+		if convertOne(hc, jpg) {
+			os.Remove(hc)
+			count++
+		} else {
+			l.Println("warning: could not transcode", hc)
+		}
+	}
+	return count
+}
+
+func convertOne(src, dst string) bool {
+	try := [][]string{
+		{"sips", "-s", "format", "jpeg", src, "--out", dst},
+		{"heif-convert", "-q", "92", src, dst},
+		{"magick", src, dst},
+	}
+	for _, c := range try {
+		if _, err := exec.LookPath(c[0]); err != nil {
+			continue
+		}
+		if err := exec.Command(c[0], c[1:]...).Run(); err == nil {
+			if fi, e := os.Stat(dst); e == nil && fi.Size() > 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (ctx *context) checkTile(p fly.Trigger, z, y, x, h int) (bool, error) {
@@ -278,14 +332,53 @@ func (ctx *context) checkTile(p fly.Trigger, z, y, x, h int) (bool, error) {
 	return false, nil
 }
 
+// isMissing reports whether an error from getTile means "no tile here"
+// (HTTP 404, or the jpeg placeholder Apple returns when there's no C3M),
+// as opposed to a real failure.
+func isMissing(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return err == errEmptyTile ||
+		strings.Contains(s, "http status 404") ||
+		strings.Contains(s, "received jpeg") ||
+		strings.Contains(s, "Invalid C3M header")
+}
+
 func (ctx *context) getTile(p fly.Trigger, z, y, x, h int) (c3m.C3M, error) {
 	yn := mth.TileCountPerAxis(z) - 1 - y // invert y
 	url := fmt.Sprintf("%s?style=%d&v=%d&region=%d&x=%d&y=%d&z=%d&h=%d",
 		ctx.URLPrefixC3m, mps.ResourceManifest_StyleConfig_C3M, p.Version, p.Region, x, yn, z, h)
 
-	data, err := ctx.get(url)
-	if err != nil {
-		return c3m.C3M{}, err
+	// Apple primes Flyover tiles on demand: the first request(s) can return an
+	// empty 200 while the tile is generated server-side, then it serves data.
+	// Retry empty responses with backoff before deciding the tile is absent.
+	var data []byte
+	var err error
+	for attempt := 0; attempt < 6; attempt++ {
+		data, err = ctx.get(url)
+		if err != nil {
+			return c3m.C3M{}, err // 404 / jpeg / network — real signal
+		}
+		if len(data) > 0 {
+			break
+		}
+		time.Sleep(time.Duration(700+attempt*500) * time.Millisecond)
+	}
+	if os.Getenv("DBG") != "" {
+		pfx := data
+		if len(pfx) > 16 {
+			pfx = pfx[:16]
+		}
+		l.Printf("GET h=%d -> %d bytes first=%q", h, len(data), string(pfx))
+		if dp := os.Getenv("DUMP"); dp != "" && len(data) > 0 {
+			ioutil.WriteFile(dp, data, 0644)
+			l.Printf("dumped %d bytes -> %s", len(data), dp)
+		}
+	}
+	if len(data) == 0 {
+		return c3m.C3M{}, errEmptyTile
 	}
 	return c3m.Parse(data)
 }

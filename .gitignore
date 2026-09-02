@@ -1,2 +1,21 @@
+# --- secrets : jetons Apple Maps recoltes par cmd/find-token
+config.json
+token_candidates.txt
+
+# --- derives : tout se regenere avec scripts/build_church.py
+reconstruction/geom.json
+reconstruction/san_patrizio_Yup.obj
+reconstruction/yup.json
+reconstruction/pieces.json
 cache/
-downloaded_files/
+
+# --- brouillons et journaux
+*.bak
+*.bak[0-9]
+rendus/**/*.log
+renders/test.png
+
+# --- systeme
+.DS_Store
+__pycache__/
+*.pyc

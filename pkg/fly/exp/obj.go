@@ -66,7 +66,14 @@ func (e *OBJExport) Next(c3m c3m.C3M, subPfx string) (err error) {
 	dir, fnPfx := e.dir, e.fnPfx
 
 	for i, material := range c3m.Materials {
-		oth.CheckPanic(ioutil.WriteFile(path.Join(dir, fmt.Sprintf("%s%s_%d.jpg", fnPfx, subPfx, i)), material.JPEG, 0655))
+		// map_Kd always references .jpg; HEIC textures are transcoded to .jpg by
+		// the export command after all tiles are written. Write whichever source
+		// the tile carried: raw HEIC (current Apple tiles) or JPEG (legacy).
+		if len(material.HEIC) > 0 {
+			oth.CheckPanic(ioutil.WriteFile(path.Join(dir, fmt.Sprintf("%s%s_%d.heic", fnPfx, subPfx, i)), material.HEIC, 0655))
+		} else {
+			oth.CheckPanic(ioutil.WriteFile(path.Join(dir, fmt.Sprintf("%s%s_%d.jpg", fnPfx, subPfx, i)), material.JPEG, 0655))
+		}
 		nxt := fmt.Sprintf(`
 newmtl mtl_%s_%d
 Kd 1.000 1.000 1.000

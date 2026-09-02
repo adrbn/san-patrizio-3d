@@ -2,11 +2,13 @@ package fly
 
 import (
 	"encoding/xml"
+	"errors"
 	"io/ioutil"
 	"math"
 	"os"
 	"path"
 	"regexp"
+	"strings"
 
 	"github.com/retroplasma/flyover-reverse-engineering/pkg/mps"
 	"github.com/retroplasma/flyover-reverse-engineering/pkg/web"
@@ -41,6 +43,12 @@ func GetAltitudeManifest(cache mps.Cache, rm mps.ResourceManifest) (am AltitudeM
 		return
 	}
 
+	// find cache base url
+	cacheBaseUrl, err := cacheBaseURL(rm)
+	if err != nil {
+		return
+	}
+
 	// get altitude manifest
 	rawAmCachePath := path.Join(cache.Directory, altitudeFile)
 	var rawAm []byte
@@ -49,7 +57,7 @@ func GetAltitudeManifest(cache mps.Cache, rm mps.ResourceManifest) (am AltitudeM
 	}
 	if !cache.Enabled || os.IsNotExist(err) {
 		// from url
-		if rawAm, err = web.Get(rm.CacheBaseUrl + "xml/" + altitudeFile); err != nil {
+		if rawAm, err = web.Get(cacheBaseUrl + "xml/" + altitudeFile); err != nil {
 			return
 		}
 		if cache.Enabled {
@@ -81,4 +89,22 @@ func GetAltitudeManifest(cache mps.Cache, rm mps.ResourceManifest) (am AltitudeM
 	}
 
 	return
+}
+
+// cacheBaseURL returns the base url that cache files (xml/altitude-*.xml) hang off.
+//
+// It used to live at the root of the resource manifest (field 31). Apple has
+// since moved it into a service endpoint container (field 92.2.1), so old
+// manifests populate the former and current ones the latter. Prefer whichever
+// is present, root first for backwards compatibility.
+func cacheBaseURL(rm mps.ResourceManifest) (string, error) {
+	for _, u := range []string{rm.GetCacheBaseUrl(), rm.GetServices().GetCacheBase().GetUrl()} {
+		if strings.HasPrefix(u, "http") {
+			if !strings.HasSuffix(u, "/") {
+				u += "/"
+			}
+			return u, nil
+		}
+	}
+	return "", errors.New("no cache base url in resource manifest (checked field 31 and 92.2.1)")
 }

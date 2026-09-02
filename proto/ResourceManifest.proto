@@ -1,12 +1,30 @@
 syntax = "proto3";
 package mps;
 
+option go_package = "github.com/retroplasma/flyover-reverse-engineering/pkg/mps";
+
 message ResourceManifest {
 	repeated StyleConfig style_config = 2;
 	string token_p2 = 30;
+
+	// Historiquement la base URL des fichiers de cache (xml/altitude-*.xml)
+	// etait ici, a la racine. Apple l'a depuis deplacee dans services.cache_base.
+	// Conserve pour compatibilite avec les vieux manifestes.
 	string cache_base_url = 31;
+
 	repeated CacheFile cache_file = 72;
 	repeated string cache_file_2 = 9;
+
+	// Conteneur d'endpoints de service ajoute par Apple.
+	Services services = 92;
+
+	message Services {
+		Endpoint cache_base = 2;
+
+		message Endpoint {
+			string url = 1;
+		}
+	}
 
 	message CacheFile {
 		string file_name = 2;

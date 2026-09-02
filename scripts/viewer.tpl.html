@@ -1,0 +1,1784 @@
+<meta charset="utf-8">
+<title>San Patrizio a Villa Ludovisi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+:root{
+  --ground:#EDE9E1; --surface:#FBF9F5; --surface-2:#E1DACC;
+  --ink:#241C18; --ink-2:#5D5047; --ink-3:#8D7F74;
+  --rule:#CCC3B4; --rule-strong:#AFA394;
+  --accent:#A34B33; --accent-ink:#FFF7F3;
+  --canvas-a:#E4DED2; --canvas-b:#D2CABB;
+  --shadow:0 1px 2px rgba(36,28,24,.07),0 8px 28px rgba(36,28,24,.09);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#15110E; --surface:#1E1815; --surface-2:#2A221C;
+    --ink:#F0E9E0; --ink-2:#B4A79B; --ink-3:#7C6F65;
+    --rule:#3A3029; --rule-strong:#4E4238;
+    --accent:#D2704F; --accent-ink:#17120F;
+    --canvas-a:#1A1512; --canvas-b:#0E0B09;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 34px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#15110E; --surface:#1E1815; --surface-2:#2A221C;
+  --ink:#F0E9E0; --ink-2:#B4A79B; --ink-3:#7C6F65;
+  --rule:#3A3029; --rule-strong:#4E4238;
+  --accent:#D2704F; --accent-ink:#17120F;
+  --canvas-a:#1A1512; --canvas-b:#0E0B09;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 34px rgba(0,0,0,.5);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased; overflow:hidden;
+  overscroll-behavior:none; -webkit-text-size-adjust:100%;
+}
+#stage{position:fixed; inset:0}
+#gl{display:block; width:100%; height:100%; touch-action:none; cursor:grab}
+#gl.dragging{cursor:grabbing}
+
+.eyebrow{
+  font-family:"Inter",system-ui,sans-serif;
+  font-size:10px; letter-spacing:.075em; text-transform:uppercase;
+  color:var(--ink-3);
+}
+
+/* ── cartouche de planche ───────────────────────────────── */
+.block{
+  position:absolute; top:20px; left:20px; z-index:3;
+  max-width:min(340px,calc(100vw - 40px));
+  background:color-mix(in srgb,var(--surface) 88%,transparent);
+  backdrop-filter:blur(10px);
+  border:1px solid var(--rule); box-shadow:var(--shadow);
+}
+.block__head{padding:14px 16px 12px; border-bottom:1px solid var(--rule); position:relative}
+.block__toggle{
+  position:absolute; top:8px; right:8px; width:30px; height:30px; padding:0;
+  border:1px solid var(--rule); background:none; display:grid; place-items:center;
+}
+.block__toggle span{
+  width:9px; height:9px; border-right:1.5px solid var(--ink-2); border-bottom:1.5px solid var(--ink-2);
+  transform:translateY(-2px) rotate(-135deg); transition:transform .18s;
+}
+.block--min .block__toggle span{transform:translateY(-3px) rotate(45deg)}
+.block--min .block__sub,
+.block--min .block__rows{display:none}
+.block--min .block__head{border-bottom:0; padding-bottom:13px}
+.block__title{
+  font-family:"Source Serif 4",Charter,Georgia,serif;
+  font-weight:600; font-size:23px; line-height:1.14; margin:7px 0 0;
+  text-wrap:balance; letter-spacing:-.005em;
+}
+.block__sub{margin:7px 0 0; font-size:12.5px; color:var(--ink-2); line-height:1.45}
+.block__rows{display:grid; font-family:"Inter",system-ui,sans-serif; font-size:11px}
+.row{display:grid; grid-template-columns:78px 1fr; gap:10px; padding:7px 16px; border-bottom:1px solid var(--rule)}
+.row:last-child{border-bottom:0}
+.row dt{color:var(--ink-3); letter-spacing:.05em; text-transform:uppercase; margin:0}
+.row dd{margin:0; color:var(--ink); font-variant-numeric:tabular-nums}
+
+/* ── barre d'outils ─────────────────────────────────────── */
+.bar{
+  position:absolute; left:20px; bottom:20px; z-index:3;
+  display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end;
+  max-width:calc(100vw - 40px);
+}
+.grp{
+  display:flex; background:color-mix(in srgb,var(--surface) 88%,transparent);
+  backdrop-filter:blur(10px); border:1px solid var(--rule); box-shadow:var(--shadow);
+}
+.grp + .grp{margin-left:2px}
+button{
+  appearance:none; background:none; border:0; border-right:1px solid var(--rule);
+  color:var(--ink-2); font:inherit; font-size:12px; padding:9px 13px; cursor:pointer;
+  letter-spacing:.01em; white-space:nowrap; transition:background .13s,color .13s;
+}
+button:last-child{border-right:0}
+#planBox{align-items:center; gap:10px; padding:0 13px; font-size:12px; color:var(--ink-2)}
+#planBox[hidden], #modeBox[hidden]{display:none}
+@media (hover:none), (max-width:720px){ .hint{display:none} }
+.cap{align-self:center; max-width:min(560px,calc(100vw - 32px)); text-align:center;
+  background:color-mix(in srgb,var(--surface) 92%,transparent);
+  backdrop-filter:blur(10px); border:1px solid var(--rule); box-shadow:var(--shadow);
+  padding:10px 16px; font-size:13px; line-height:1.4; color:var(--ink);
+  white-space:normal}
+.cap[hidden]{display:none}
+.cap:after{content:" \2014 en savoir plus"; color:var(--ink-3); font-size:11.5px}
+.cap:not([data-note]):after{content:""}
+@media (max-width:560px){ .cap{font-size:12.5px; padding:9px 13px} }
+#planZ{appearance:none; -webkit-appearance:none; width:126px; height:2px;
+  background:var(--rule); cursor:pointer; margin:0}
+#planZ::-webkit-slider-thumb{appearance:none; -webkit-appearance:none;
+  width:13px; height:13px; border-radius:50%; background:var(--accent); border:0}
+#planZ::-moz-range-thumb{width:13px; height:13px; border-radius:50%;
+  background:var(--accent); border:0}
+#planZ:focus-visible{outline:2px solid var(--accent); outline-offset:4px}
+#planOut{font-family:"Inter",system-ui,sans-serif; font-size:11px;
+  color:var(--ink); font-variant-numeric:tabular-nums; min-width:50px; text-align:right}
+button:hover{background:var(--surface-2); color:var(--ink)}
+button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink)}
+button:focus-visible{outline:2px solid var(--accent); outline-offset:-2px; z-index:1; position:relative}
+
+/* ── legende des niveaux ────────────────────────────────── */
+.legend{
+  position:absolute; right:20px; top:20px; z-index:3;
+  background:color-mix(in srgb,var(--surface) 88%,transparent);
+  backdrop-filter:blur(10px); border:1px solid var(--rule); box-shadow:var(--shadow);
+  padding:12px 14px; font-family:"Inter",system-ui,sans-serif; font-size:11px;
+  min-width:186px;
+}
+.legend[hidden]{display:none}
+.legend h2{margin:0 0 9px; font:inherit; font-size:10px; letter-spacing:.075em;
+  text-transform:uppercase; color:var(--ink-3); font-weight:400}
+.lv{display:flex; justify-content:space-between; gap:14px; padding:3px 0; color:var(--ink-2)}
+.lv b{font-weight:500; color:var(--ink); font-variant-numeric:tabular-nums}
+
+/* etiquettes de niveau projetees dans la scene */
+#tags{position:absolute; inset:0; pointer-events:none; z-index:2}
+.tag{
+  position:absolute; transform:translate(0,-50%);
+  font-family:"Inter",system-ui,sans-serif; font-size:10.5px;
+  color:var(--ink); background:color-mix(in srgb,var(--surface) 82%,transparent);
+  border:1px solid var(--rule); padding:2px 6px; white-space:nowrap;
+  font-variant-numeric:tabular-nums; letter-spacing:.02em;
+}
+
+.hint{
+  position:absolute; right:20px; bottom:20px; z-index:3; text-align:right;
+  font-family:"Inter",system-ui,sans-serif; font-size:10.5px;
+  color:var(--ink-2); line-height:1.75; pointer-events:none; margin:0;
+  background:color-mix(in srgb,var(--surface) 86%,transparent);
+  backdrop-filter:blur(10px); border:1px solid var(--rule);
+  padding:9px 12px; box-shadow:var(--shadow);
+}
+.info{
+  position:absolute; right:20px; bottom:20px; z-index:5; width:min(330px,calc(100vw - 40px));
+  background:color-mix(in srgb,var(--surface) 94%,transparent);
+  backdrop-filter:blur(10px); border:1px solid var(--rule); box-shadow:var(--shadow);
+  padding:16px 18px 15px;
+}
+.info[hidden]{display:none}
+.info h2{font-family:"Source Serif 4",Charter,Georgia,serif; font-weight:600; font-size:19px;
+  margin:6px 0 8px; line-height:1.15; text-wrap:balance}
+.info p{margin:0; font-size:13px; line-height:1.5; color:var(--ink-2)}
+.info__src{margin-top:10px !important; font-size:11px; color:var(--ink-3);
+  font-family:"Inter",system-ui,sans-serif}
+.info__x{position:absolute; top:8px; right:8px; width:28px; height:28px; padding:0;
+  border:1px solid var(--rule); font-size:15px; line-height:1; background:none}
+.compact .info{left:10px; right:10px; bottom:104px; width:auto}
+
+.toast{
+  position:absolute; left:50%; bottom:88px; transform:translateX(-50%) translateY(6px);
+  z-index:4; opacity:0; pointer-events:none; transition:opacity .2s,transform .2s;
+  background:var(--ink); color:var(--ground); font-size:12px; padding:8px 14px;
+  font-family:"Inter",system-ui,sans-serif; letter-spacing:.02em;
+}
+.toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
+
+.hint kbd{
+  font:inherit; border:1px solid var(--rule); border-bottom-width:2px;
+  padding:0 4px; color:var(--ink-2);
+}
+
+/* Pilote en JS sur la largeur reellement mesuree : la page est encadree par
+   l'hote et n'a pas de balise viewport, donc une requete media sur la largeur
+   ne se declenche pas de maniere fiable sur telephone. */
+.compact .block{max-width:calc(100% - 20px); top:10px; left:10px; right:10px}
+.compact .block__title{font-size:19px}
+.compact .block__sub{display:none}
+.compact .legend{display:none}
+.compact .hint{display:none}
+.compact .bar{left:10px; right:10px; bottom:10px; flex-wrap:wrap; gap:6px}
+.compact .tag{font-size:11px; padding:3px 6px}
+.compact .info{
+  position:absolute; right:20px; bottom:20px; z-index:5; width:min(330px,calc(100vw - 40px));
+  background:color-mix(in srgb,var(--surface) 94%,transparent);
+  backdrop-filter:blur(10px); border:1px solid var(--rule); box-shadow:var(--shadow);
+  padding:16px 18px 15px;
+}
+.info[hidden]{display:none}
+.info h2{font-family:"Source Serif 4",Charter,Georgia,serif; font-weight:600; font-size:19px;
+  margin:6px 0 8px; line-height:1.15; text-wrap:balance}
+.info p{margin:0; font-size:13px; line-height:1.5; color:var(--ink-2)}
+.info__src{margin-top:10px !important; font-size:11px; color:var(--ink-3);
+  font-family:"Inter",system-ui,sans-serif}
+.info__x{position:absolute; top:8px; right:8px; width:28px; height:28px; padding:0;
+  border:1px solid var(--rule); font-size:15px; line-height:1; background:none}
+.compact .info{left:10px; right:10px; bottom:104px; width:auto}
+
+.toast{bottom:104px}
+@media (pointer:coarse){
+  button{padding:12px 15px; font-size:13px}     /* cibles tactiles ~44 px */
+  .block__toggle{width:38px; height:38px; padding:0}
+}
+
+@media (max-width:820px){
+  .block{
+    max-width:calc(100vw - 24px);
+    top:calc(12px + env(safe-area-inset-top)); left:calc(12px + env(safe-area-inset-left));
+  }
+  .block__title{font-size:19px}
+  .block__sub{display:none}
+  .block__rows .row:nth-child(n+4){display:none}
+  .legend{display:none}
+  .bar{
+    left:calc(10px + env(safe-area-inset-left));
+    right:calc(10px + env(safe-area-inset-right));
+    bottom:calc(10px + env(safe-area-inset-bottom));
+    overflow-x:auto; flex-wrap:nowrap; padding-bottom:2px;
+    scrollbar-width:none; gap:6px;
+  }
+  .bar::-webkit-scrollbar{display:none}
+  button{padding:12px 15px; font-size:13px}   /* cibles tactiles ~44 px */
+  .info{
+  position:absolute; right:20px; bottom:20px; z-index:5; width:min(330px,calc(100vw - 40px));
+  background:color-mix(in srgb,var(--surface) 94%,transparent);
+  backdrop-filter:blur(10px); border:1px solid var(--rule); box-shadow:var(--shadow);
+  padding:16px 18px 15px;
+}
+.info[hidden]{display:none}
+.info h2{font-family:"Source Serif 4",Charter,Georgia,serif; font-weight:600; font-size:19px;
+  margin:6px 0 8px; line-height:1.15; text-wrap:balance}
+.info p{margin:0; font-size:13px; line-height:1.5; color:var(--ink-2)}
+.info__src{margin-top:10px !important; font-size:11px; color:var(--ink-3);
+  font-family:"Inter",system-ui,sans-serif}
+.info__x{position:absolute; top:8px; right:8px; width:28px; height:28px; padding:0;
+  border:1px solid var(--rule); font-size:15px; line-height:1; background:none}
+.compact .info{left:10px; right:10px; bottom:104px; width:auto}
+
+.toast{bottom:calc(74px + env(safe-area-inset-bottom))}
+  .hint{display:none}
+  .tag{font-size:10px; padding:2px 5px}
+}
+@media (prefers-reduced-motion:reduce){ button{transition:none} }
+
+/* ── fiche d'oeuvre ─────────────────────────────────────── */
+.sheet{position:fixed; inset:0; z-index:20; display:flex; align-items:center;
+  justify-content:center; padding:20px; background:rgba(22,18,15,.55);
+  backdrop-filter:blur(3px); overscroll-behavior:contain}
+.sheet[hidden]{display:none}
+.sheet__box{position:relative; width:min(560px,100%); max-height:min(86vh,920px);
+  overflow:auto; -webkit-overflow-scrolling:touch; background:var(--surface);
+  border:1px solid var(--rule); box-shadow:var(--shadow); padding:26px 26px 22px}
+.sheet__x{position:absolute; top:10px; right:10px; width:34px; height:34px;
+  padding:0; font-size:19px; line-height:1; border:1px solid var(--rule);
+  background:var(--surface); color:var(--ink-2)}
+.sheet__k{margin:0 0 5px; font-family:"Inter",system-ui,sans-serif;
+  font-size:10px; letter-spacing:.075em; text-transform:uppercase; color:var(--ink-3)}
+.sheet__t{margin:0 0 16px; font-size:23px; line-height:1.22; font-weight:400;
+  letter-spacing:-.01em; padding-right:36px}
+.sheet__pics{display:grid; gap:14px; margin:0 0 18px}
+.sheet__pics:empty{display:none}
+.sheet figure{margin:0}
+.sheet img{display:block; width:100%; height:auto; border:1px solid var(--rule);
+  background:var(--surface-2)}
+.sheet figure.pad{background:#fff; border:1px solid var(--rule); padding:18px}
+.sheet figure.pad img{border:0; background:none; width:auto; max-width:100%;
+  max-height:290px; margin:0 auto}
+.sheet figure.pad figcaption{text-align:center}
+.sheet figcaption{margin-top:6px; font-family:"Inter",system-ui,sans-serif;
+  font-size:10.5px; color:var(--ink-3); letter-spacing:.02em; line-height:1.45}
+.sheet__b p{margin:0 0 11px; font-size:14.5px; line-height:1.56; color:var(--ink-2)}
+.sheet__b p:last-child{margin-bottom:0}
+.sheet__s{margin:16px 0 0; padding-top:12px; border-top:1px solid var(--rule);
+  font-family:"Inter",system-ui,sans-serif; font-size:10.5px;
+  color:var(--ink-3); line-height:1.5}
+@media (max-width:560px){
+  .sheet{padding:0; align-items:flex-end}
+  .sheet__box{width:100%; max-height:92vh; padding:22px 18px 28px;
+    border-width:1px 0 0}
+  .sheet__t{font-size:20px}
+}
+
+/* ── barre : une seule surface, trois niveaux de lecture ─── */
+.bar{position:absolute; left:0; right:0; bottom:0; z-index:5;
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  padding:0 16px 16px; pointer-events:none}
+.bar > *{pointer-events:auto; max-width:100%}
+.bar__main{display:flex; align-items:stretch; overflow-x:auto;
+  scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  background:color-mix(in srgb,var(--surface) 92%,transparent);
+  backdrop-filter:blur(14px) saturate(1.08);
+  border:1px solid var(--rule);
+  box-shadow:0 1px 1px rgb(0 0 0/.03), 0 10px 28px rgb(0 0 0/.07)}
+.bar__main::-webkit-scrollbar{display:none}
+.bar__views,.bar__acts,.bar__more{display:flex; align-items:stretch; flex:0 0 auto}
+.bar__sep{flex:0 0 1px; background:var(--rule); margin:7px 0}
+.bar button{border:0; background:none; color:var(--ink-3); font:inherit;
+  font-size:12px; letter-spacing:.015em; white-space:nowrap; cursor:pointer;
+  padding:12px 14px; position:relative; transition:color .15s,background .15s}
+.bar button:hover{color:var(--ink); background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.bar__acts button{color:var(--ink-2); font-weight:500}
+.bar button[aria-pressed="true"]{color:var(--ink); background:none}
+.bar button[aria-pressed="true"]::after{content:""; position:absolute;
+  left:12px; right:12px; bottom:6px; height:1.5px; background:var(--accent)}
+.bar button:focus-visible{outline:2px solid var(--accent); outline-offset:-3px}
+#bMore{letter-spacing:.07em; padding:12px 15px}
+#bMore[aria-expanded="true"]{color:var(--ink)}
+
+.menu{align-self:flex-end; min-width:186px;
+  display:flex; flex-direction:column; padding:4px 0;
+  background:var(--surface); border:1px solid var(--rule);
+  box-shadow:0 12px 32px rgb(0 0 0/.13)}
+.menu[hidden]{display:none}
+.menu button{text-align:left; padding:10px 15px; width:100%}
+.menu button[aria-pressed="true"]::after{left:auto; right:13px; bottom:auto; top:50%;
+  width:5px; height:5px; margin-top:-2.5px; border-radius:50%}
+
+.bar__ctx{display:flex; align-items:stretch;
+  background:color-mix(in srgb,var(--surface) 92%,transparent);
+  backdrop-filter:blur(14px); border:1px solid var(--rule);
+  box-shadow:0 8px 22px rgb(0 0 0/.06)}
+.bar__ctx[hidden]{display:none}
+.seg{display:flex}
+.lvl{display:flex; align-items:center; gap:11px; padding:0 15px;
+  border-left:1px solid var(--rule); font-size:11.5px; color:var(--ink-3)}
+.lvl[hidden]{display:none}
+#planOut{color:var(--ink)}
+.hint{bottom:76px !important; transition:opacity .15s}
+body.panel-open .hint{opacity:0}
+
+@media (max-width:640px){
+  .bar{padding:0 0 max(8px,env(safe-area-inset-bottom)); gap:7px}
+  .bar__main{width:100%; border-left:0; border-right:0; border-bottom:0}
+  .bar button{padding:14px 13px; font-size:12.5px}
+  .bar__ctx{margin:0 10px}
+  .block{top:10px; left:10px; right:10px; max-width:none}
+  .legend{right:10px; top:auto; bottom:132px; min-width:0}
+}
+@media (max-width:640px){ .block__title{font-size:21px} }
+
+/* ── balade ─────────────────────────────────────────────── */
+#walkBox{align-items:center; gap:11px; padding:0 15px; font-size:11.5px;
+  color:var(--ink-3)}
+#walkBox[hidden]{display:none}
+#walkGo{appearance:none; border:1px solid var(--rule); background:var(--surface);
+  color:var(--ink); font:inherit; font-size:12px; padding:7px 10px; cursor:pointer}
+.pad{position:absolute; left:18px; bottom:96px; width:116px; height:116px;
+  border-radius:50%; border:1px solid var(--rule); z-index:4; touch-action:none;
+  background:color-mix(in srgb,var(--surface) 55%,transparent);
+  backdrop-filter:blur(6px); display:grid; place-items:center}
+.pad[hidden]{display:none}
+.pad span{width:42px; height:42px; border-radius:50%; background:var(--accent);
+  opacity:.72; transition:transform .06s linear}
+@media (hover:hover) and (pointer:fine){ .pad{display:none} }
+
+/* ── index des oeuvres ──────────────────────────────────── */
+.works{width:min(560px,calc(100vw - 20px)); max-height:min(56vh,440px);
+  overflow:auto; -webkit-overflow-scrolling:touch; padding:5px;
+  background:var(--surface); border:1px solid var(--rule);
+  box-shadow:0 14px 40px rgb(0 0 0/.16)}
+.works[hidden]{display:none}
+.works__i{display:grid; grid-template-columns:70px 1fr; gap:13px; width:100%;
+  align-items:center; text-align:left; border:0; background:none; cursor:pointer;
+  padding:8px; color:inherit; font:inherit; transition:background .13s}
+.works__i:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.works__i:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+.works__i img{display:block; width:70px; height:47px; object-fit:cover;
+  border:1px solid var(--rule); background:var(--surface-2)}
+.works__i span{display:block; font-family:"Inter",system-ui,sans-serif;
+  font-size:9.5px; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--ink-3); margin-bottom:3px}
+.works__i b{display:block; font-weight:500; font-size:13.5px; line-height:1.3;
+  color:var(--ink)}
+@media (max-width:640px){ .works{width:calc(100vw - 20px); margin:0 10px} }
+.block__rows, .lv, #planOut, .sheet__s, .sheet figcaption, .sheet__k,
+.eyebrow, .works__i span, .tag{font-variant-numeric:tabular-nums}
+/* Etiquettes du plan : ecrites a meme le sol, dans la projection parallele. */
+#plan{position:absolute; inset:0; pointer-events:none; z-index:2}
+#plan div{position:absolute; transform:translate(-50%,-50%); text-align:center;
+  white-space:nowrap; line-height:1.25; color:#2A2724; padding:2px 7px 3px;
+  background:rgba(247,244,238,.80); border-radius:2px}
+#plan b{display:block; font-weight:500; font-size:11.5px; letter-spacing:.07em;
+  text-transform:uppercase}
+#plan i{font-style:normal; font-size:10px; opacity:.62;
+  font-variant-numeric:tabular-nums}
+.block__rows{font-size:12px}
+.row dt{font-weight:500}
+</style>
+
+<div id="stage">
+  <canvas id="gl"></canvas>
+  <div id="plan"></div>
+  <div id="tags"></div>
+
+  <section class="block">
+    <div class="block__head">
+      <button type="button" class="block__toggle" id="bInfo"
+              aria-expanded="true" aria-controls="blockBody" aria-label="Replier la fiche">
+        <span aria-hidden="true"></span>
+      </button>
+      <p class="eyebrow">Relevé et reconstruction volumétrique</p>
+      <h1 class="block__title">San Patrizio a Villa Ludovisi</h1>
+      <p class="block__sub">Église nationale irlandaise et américaine de Rome. Volume reconstitué d’après le scan photogrammétrique et l’emprise cadastrale.</p>
+    </div>
+    <dl class="block__rows" id="blockBody">
+      <div class="row"><dt>Lieu</dt><dd>Via Boncompagni 31, Roma</dd></div>
+      <div class="row"><dt>Auteur</dt><dd>Aristide Leonori, 1908–1911</dd></div>
+      <div class="row"><dt>Emprise</dt><dd>47,35 × 25,44 m — 1 299 m²</dd></div>
+      <div class="row"><dt>Volume</dt><dd>≈ 19 500 m³ hors œuvre</dd></div>
+      <div class="row"><dt>Logements</dt><dd>294 m² par niveau — l’annonce en déclare 290</dd></div>
+      <div class="row"><dt>Chambres</dt><dd>7 au 1ᵉʳ, 6 au 2ᵉ, 2 sous comble</dd></div>
+      <div class="row"><dt>Atrium</dt><dd>≈ 1 620 m³ — 3 × 3 travées voûtées</dd></div>
+      <div class="row"><dt>Faîte</dt><dd>21,00 m — pente 28,2°</dd></div>
+      <div class="row"><dt>Sources</dt><dd>Apple Flyover · OSM 203996025 · relevé DoveVivo</dd></div>
+      <div class="row"><dt>Mosaïque</dt><dd>restitution, d’après photo du 31.08.2026</dd></div>
+    </dl>
+  </section>
+
+  <aside class="legend" id="legend">
+    <h2>Niveaux relevés</h2>
+    <div class="lv"><span>Faîte de la nef</span><b>21,00</b></div>
+    <div class="lv"><span>Égout de la nef</span><b>16,85</b></div>
+    <div class="lv"><span>Bas-côtés, façade</span><b>15,40</b></div>
+    <div class="lv"><span>Corniche d’abside</span><b>13,00</b></div>
+    <div class="lv"><span>Bas-côtés, nef</span><b>9,50</b></div>
+  </aside>
+
+  <div class="bar">
+    <button type="button" class="cap" id="cap" hidden></button>
+    <div class="works" id="worksPanel" hidden role="dialog" aria-label="Les œuvres"></div>
+    <div class="pad" id="joy" hidden aria-hidden="true"><span></span></div>
+    <div class="menu" id="moreMenu" hidden>
+      <button type="button" id="bGrid" aria-pressed="false">Cotes relevées</button>
+      <button type="button" id="bClay" aria-pressed="false">Rendu argile</button>
+      <button type="button" id="bSpin" aria-pressed="false">Rotation lente</button>
+      <button type="button" id="bShare">Partager le lien</button>
+    </div>
+    <div class="bar__ctx" id="walkBox" hidden>
+      <label for="walkGo">Aller à</label>
+      <select id="walkGo"></select>
+    </div>
+    <div class="bar__ctx" id="ctxBar" hidden>
+      <div class="seg" id="modeBox" role="group" aria-label="Façon d\u2019ouvrir">
+        <button type="button" id="mLong" aria-pressed="true"
+          title="Le bâtiment est fendu dans sa longueur : on regarde de côté">Coupé en long</button>
+        <button type="button" id="mHaut" aria-pressed="false"
+          title="Le toit est enlevé : on regarde d\u2019en haut, la réglette choisit la hauteur">Vu de dessus</button>
+        <button type="button" id="mPlan" aria-pressed="false"
+          title="Plan d\u2019architecte : projection parallèle à la verticale, coupé à 1,25 m au-dessus du niveau choisi">Plan</button>
+      </div>
+      <div class="lvl" id="etgBox" hidden>
+        <label for="etgSel">Niveau</label>
+        <select id="etgSel">
+          <option value="0">Rez-de-chaussée — église</option>
+          <option value="1" selected>1ᵉʳ étage</option>
+          <option value="2">2ᵉ étage</option>
+          <option value="3">3ᵉ étage — terrasses</option>
+        </select>
+      </div>
+      <div class="lvl" id="planBox" hidden>
+        <label for="planZ">Niveau</label>
+        <input type="range" id="planZ" min="1" max="21.5" step="0.1" value="16">
+        <output id="planOut" for="planZ">15,6 m</output>
+      </div>
+    </div>
+
+    <div class="bar__main">
+      <div class="bar__views" role="group" aria-label="Vues">
+        <button type="button" data-view="facade">Façade</button>
+        <button type="button" data-view="ouest">Flanc</button>
+        <button type="button" data-view="abside">Abside</button>
+        <button type="button" data-view="axo">Axono</button>
+      </div>
+      <span class="bar__sep" aria-hidden="true"></span>
+      <div class="bar__acts">
+        <button type="button" id="bInside" aria-pressed="false"
+          title="Ouvre le bâtiment pour en voir l\u2019intérieur">Intérieur</button>
+        <button type="button" id="bWorks" aria-expanded="false"
+          aria-controls="worksPanel"
+          title="Liste des œuvres : un clic amène la caméra devant">Œuvres</button>
+        <button type="button" id="bWalk" aria-pressed="false"
+          title="Se promener à hauteur d\u2019homme : glisser pour regarder, ZQSD ou flèches pour avancer">Balade</button>
+        <button type="button" id="bTour" aria-pressed="false"
+          title="Approche, ouverture des portes, traversée de l\u2019église, tour complet">Visite</button>
+      </div>
+      <span class="bar__sep" aria-hidden="true"></span>
+      <div class="bar__more">
+        <button type="button" id="bMore" aria-expanded="false" aria-haspopup="true"
+                aria-controls="moreMenu" aria-label="Plus d\u2019options">···</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true"
+       aria-labelledby="sheetT">
+    <div class="sheet__box">
+      <button type="button" class="sheet__x" id="sheetX" aria-label="Fermer">×</button>
+      <p class="sheet__k" id="sheetK"></p>
+      <h2 class="sheet__t" id="sheetT"></h2>
+      <div class="sheet__pics" id="sheetP"></div>
+      <div class="sheet__b" id="sheetB"></div>
+      <p class="sheet__s" id="sheetS"></p>
+    </div>
+  </div>
+
+  <output id="toast" class="toast" aria-live="polite"></output>
+
+  <p class="hint">
+    Cliquer une mosaïque ou un blason pour sa notice<br>Glisser pour orbiter · molette pour zoomer<br>
+    <kbd>Maj</kbd>+glisser pour déplacer · <kbd>1</kbd>–<kbd>4</kbd> vues · <kbd>X</kbd> intérieur · <kbd>V</kbd> visite
+  </p>
+</div>
+
+<script>
+const GEOM = __GEOM__;
+
+/* ── decodage des buffers quantifies ─────────────────────── */
+function b64(s){const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
+const rawPos = new Int16Array(b64(GEOM.pos).buffer);
+const matIdx = b64(GEOM.mat);
+const positions = new Float32Array(rawPos.length);
+for(let i=0;i<rawPos.length;i++) positions[i] = rawPos[i]*GEOM.scale;
+const matAttr = new Float32Array(matIdx.length);
+for(let i=0;i<matIdx.length;i++) matAttr[i] = matIdx[i];
+
+const BB = GEOM.bbox, SPANX=BB[3]-BB[0], SPANY=BB[4]-BB[1], SPANZ=BB[5]-BB[2];
+const TARGET = [0, SPANY*0.42, 0];
+
+/* ── matrices ────────────────────────────────────────────── */
+const M4={
+  // Projection parallele : en plan, deux murs de meme epaisseur doivent se
+  // lire de la meme largeur, ou qu'ils soient. La perspective l'interdit.
+  ortho(l,r,b,t,n,f){return[2/(r-l),0,0,0, 0,2/(t-b),0,0, 0,0,-2/(f-n),0,
+    -(r+l)/(r-l),-(t+b)/(t-b),-(f+n)/(f-n),1];},
+  persp(f,a,n,fa){const t=1/Math.tan(f/2);return[t/a,0,0,0, 0,t,0,0, 0,0,(fa+n)/(n-fa),-1, 0,0,2*fa*n/(n-fa),0];},
+  look(e,c,u){
+    const z=norm(sub(e,c)), x=norm(cross(u,z)), y=cross(z,x);
+    return[x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0,
+           -dot(x,e),-dot(y,e),-dot(z,e),1];
+  },
+  mul(a,b){const o=new Array(16);
+    for(let i=0;i<4;i++)for(let j=0;j<4;j++){let s=0;
+      for(let k=0;k<4;k++)s+=a[k*4+j]*b[i*4+k]; o[i*4+j]=s;} return o;}
+};
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const norm=a=>{const l=Math.hypot(...a)||1;return[a[0]/l,a[1]/l,a[2]/l];};
+
+/* ── WebGL ───────────────────────────────────────────────── */
+const cv = document.getElementById("gl");
+const gl = cv.getContext("webgl2", {antialias:true, alpha:false,
+  powerPreference:"high-performance", desynchronized:false});
+if(!gl){ document.getElementById("stage").insertAdjacentHTML("beforeend",
+  '<p style="position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center">Ce navigateur n’expose pas WebGL 2, nécessaire pour afficher le modèle.</p>'); }
+
+function sh(t,src){const s=gl.createShader(t);gl.shaderSource(s,src);gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
+function prog(v,f){const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,v));
+  gl.attachShader(p,sh(gl.FRAGMENT_SHADER,f));gl.linkProgram(p);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return p;}
+
+const pMesh = prog(`#version 300 es
+in vec3 aPos; in float aMat;
+uniform float uDoor; uniform int uPorte; uniform vec3 uHinge;
+uniform mat4 uMVP;
+out vec3 vP; flat out int vM;
+void main(){
+  vec3 P = aPos; vM = int(aMat + 0.5);
+  if(uDoor > 0.001 && vM == uPorte){
+    // Chaque vantail tourne autour de son gond exterieur, vers l'interieur.
+    float sg = (P.x < 0.5 * (uHinge.x + uHinge.y)) ? -1.0 : 1.0;
+    float hx = (sg < 0.0) ? uHinge.x : uHinge.y;
+    float a = sg * uDoor * 1.35, c = cos(a), sn = sin(a);
+    vec2 r = vec2(P.x - hx, P.z - uHinge.z);
+    P.x = hx + r.x * c - r.y * sn;
+    P.z = uHinge.z + r.x * sn + r.y * c;
+  }
+  vP = P; gl_Position = uMVP * vec4(P, 1.0);
+}`,
+`#version 300 es
+precision highp float;
+in vec3 vP; flat in int vM;
+// La palette est indexee par le materiau : ce tableau doit etre au moins
+// aussi grand que MATS. Il etait dimensionne a 23 pour 36 materiaux, et tout
+// ce qui depassait lisait hors bornes — d'ou des sols verts et des dorures
+// grises. make_viewer verifie desormais la taille.
+uniform vec3 uPal[64];
+uniform sampler2D uTex;
+uniform vec4 uBBf, uBBt, uBBa, uBBp, uBBb, uBBb2, uBBi, uBBd;
+uniform sampler2D uTexA, uTexT, uTexP, uTexB, uTexB2, uTexI, uTexD;
+uniform int uMosF, uMosT, uMosA, uMosP, uMosB, uMosB2, uMur, uBrq, uMosI, uMosD;
+uniform float uCut, uCutY; uniform vec3 uL, uSky, uGnd, uClayCol, uEye;
+uniform float uClay, uGlass, uPick;
+uniform int uVit;
+out vec4 o;
+void main(){
+  if(uPick > 0.5){                       // passe de selection : on encode vM
+    if(vP.x < uCut || vP.y > uCutY) discard;
+    o = vec4(float(vM + 1) / 255.0, 0.0, 0.0, 1.0);
+    return;
+  }
+  // Coupe longitudinale : on ecarte tout ce qui est a l'ouest du plan, ce qui
+  // ouvre la nef comme une coupe d'architecte sans deplacer la geometrie.
+  if(vP.x < uCut || vP.y > uCutY) discard;
+  vec3 n = normalize(cross(dFdx(vP), dFdy(vP)));
+  if(!gl_FrontFacing) n = -n;
+  vec3 base = mix(uPal[vM], uClayCol, uClay);
+  if(uClay < 0.5 && (vM == uMur || vM == uBrq) && abs(n.y) < 0.7){
+    // Appareil de brique romaine : 6,2 cm de brique, 1,2 cm de joint, une
+    // assise sur deux decalee d'une demi-longueur. La coordonnee horizontale
+    // suivie depend de l'orientation du mur.
+    float H = 0.074, L = 0.30;
+    float row = floor(vP.y / H);
+    float u = (abs(n.x) > abs(n.z)) ? vP.z : vP.x;
+    float off = mod(row, 2.0) * 0.5 * L;
+    float fu = fract((u + off) / L), fv = fract(vP.y / H);
+    float j = smoothstep(0.0, 0.17, fv) * smoothstep(0.0, 0.075, min(fu, 1.0 - fu));
+    float h = fract(sin(row * 12.9898 + floor((u + off) / L) * 78.233) * 43758.5453);
+    base *= mix(0.68, 1.0, j) * (0.87 + 0.22 * h);
+  }
+  if(uClay < 0.5 && (vM == uMosB || vM == uMosB2)){
+    vec4 bb = (vM == uMosB) ? uBBb : uBBb2;
+    vec2 uv = vec2((vP.x - bb.x) / max(1e-4, bb.y - bb.x),
+                   (vP.y - bb.z) / max(1e-4, bb.w - bb.z));
+    vec2 sb = vec2(uv.x, 1.0 - uv.y);
+    if(vM == uMosB) base = pow(texture(uTexB,  sb).rgb, vec3(2.2));
+    else            base = pow(texture(uTexB2, sb).rgb, vec3(2.2));
+  }
+  if(uClay < 0.5 && vM == uMosA){
+    // Conque : projection frontale, exactement le point de vue depuis la nef.
+    vec2 uv = vec2((vP.x - uBBa.x) / max(1e-4, uBBa.y - uBBa.x),
+                   (vP.y - uBBa.z) / max(1e-4, uBBa.w - uBBa.z));
+    base = pow(texture(uTexA, vec2(uv.x, 1.0 - uv.y)).rgb, vec3(2.2));
+  }
+  if(uClay < 0.5 && (vM == uMosI || vM == uMosD)){
+    // Bandeau d'inscription et registre peint de l'arc triomphal.
+    vec4 bb = (vM == uMosI) ? uBBi : uBBd;
+    vec2 uv = vec2((vP.x - bb.x) / max(1e-4, bb.y - bb.x),
+                   (vP.y - bb.z) / max(1e-4, bb.w - bb.z));
+    // GLSL interdit le ternaire sur un echantillonneur : on branche.
+    vec2 st = vec2(uv.x, 1.0 - uv.y);
+    if(vM == uMosI) base = pow(texture(uTexI, st).rgb, vec3(2.2));
+    else            base = pow(texture(uTexD, st).rgb, vec3(2.2));
+  }
+  if(uClay < 0.5 && vM == uMosP){
+    // La Cene de la tribune, decoupee dans le cliche de contre-facade.
+    vec2 uv = vec2((vP.x - uBBp.x) / max(1e-4, uBBp.y - uBBp.x),
+                   (vP.y - uBBp.z) / max(1e-4, uBBp.w - uBBp.z));
+    // Le panneau regarde vers la nef : l'axe horizontal s'inverse a l'ecran,
+    // il faut donc retourner la texture pour lire la scene dans le bon sens.
+    base = pow(texture(uTexP, vec2(1.0 - uv.x, 1.0 - uv.y)).rgb, vec3(2.2));
+  }
+  if(uClay < 0.5 && vM == uMosT){
+    vec2 uv = vec2((vP.x - uBBt.x) / max(1e-4, uBBt.y - uBBt.x),
+                   (vP.y - uBBt.z) / max(1e-4, uBBt.w - uBBt.z));
+    vec2 ts = vec2(textureSize(uTexT, 0));
+    float k = ((uBBt.y - uBBt.x) / (uBBt.w - uBBt.z)) / (ts.x / ts.y);
+    vec2 kk = (k <= 1.0) ? vec2(k, 1.0) : vec2(1.0, 1.0 / k);
+    uv = uv * kk + (1.0 - kk) * 0.5;
+    base = pow(texture(uTexT, vec2(uv.x, 1.0 - uv.y)).rgb, vec3(2.2));
+  }
+  else if(uClay < 0.5 && vM == uMosF){
+    // Le panneau est plan et vertical : on reconstruit les UV a partir de sa
+    // boite englobante, puis on preserve le rapport de l'image ("cover").
+    vec4 bb = (vM == uMosF) ? uBBf : uBBt;
+    vec2 uv = vec2((vP.x - bb.x) / max(1e-4, bb.y - bb.x),
+                   (vP.y - bb.z) / max(1e-4, bb.w - bb.z));
+    vec2 ts = vec2(textureSize(uTex, 0));
+    float k = ((bb.y - bb.x) / (bb.w - bb.z)) / (ts.x / ts.y);
+    vec2 kk = (k <= 1.0) ? vec2(k, 1.0) : vec2(1.0, 1.0 / k);
+    uv = uv * kk + (1.0 - kk) * 0.5;
+    base = pow(texture(uTex, vec2(uv.x, 1.0 - uv.y)).rgb, vec3(2.2));
+  }
+  float key  = max(dot(n, normalize(uL)), 0.0);
+  float fill = max(dot(n, normalize(vec3(-uL.x,0.35,-uL.z))), 0.0)*0.28;
+  vec3 amb = mix(uGnd, uSky, 0.5+0.5*n.y);
+  vec3 c = base*(amb*0.62 + key*0.78 + fill);
+  float alpha = 1.0;
+  if(uGlass > 0.5){
+    // Verre : reflet speculaire du ciel croissant en incidence rasante,
+    // et transparence d'autant plus forte qu'on le regarde de face.
+    vec3 Vd = normalize(uEye - vP);
+    float fres = pow(1.0 - max(dot(n, Vd), 0.0), 4.0);
+    vec3 sky = mix(uGnd, uSky, 0.8);
+    float spec = pow(max(dot(reflect(-Vd, n), normalize(uL)), 0.0), 90.0);
+    if(vM == uVit){
+      // Vitrail : verre pale ambre, translucide et lumineux (releve sur les
+      // photos d'interieur), et non un verre teinte sombre.
+      c = base * (0.85 + 0.45 * key) + sky * (0.10 + 0.30 * fres) + spec * 0.40;
+      alpha = 0.50 + 0.34 * fres;
+    }else{
+      // Vitre claire : elle ne se voit que par ce qu'elle reflete.
+      c = mix(base * 0.55, sky, 0.22 + 0.72 * fres) + spec * 0.65;
+      alpha = 0.26 + 0.58 * fres;
+    }
+  }
+  o = vec4(pow(clamp(c,0.0,1.0), vec3(1.0/2.2)), alpha);
+}`);
+
+const pLine = prog(`#version 300 es
+in vec3 aPos; uniform mat4 uMVP;
+void main(){ gl_Position=uMVP*vec4(aPos,1.0); }`,
+`#version 300 es
+precision highp float; uniform vec4 uC; out vec4 o;
+void main(){ o=uC; }`);
+
+function buf(data,loc,size,p){
+  const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+  gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
+  const l=gl.getAttribLocation(p,loc); gl.enableVertexAttribArray(l);
+  gl.vertexAttribPointer(l,size,gl.FLOAT,false,0,0); return b;
+}
+const vaoMesh = gl.createVertexArray();
+gl.bindVertexArray(vaoMesh);
+buf(positions,"aPos",3,pMesh); buf(matAttr,"aMat",1,pMesh);
+gl.bindVertexArray(null);
+
+/* grille metrique + lignes de niveau */
+const LEVELS=[[9.50,"9,50 bas-côtés"],[13.00,"13,00 abside"],[15.40,"15,40 bas-côtés façade"],
+              [16.85,"16,85 égout"],[21.00,"21,00 faîte"]];
+function mkLines(arr,p){const v=new Float32Array(arr);const o=gl.createVertexArray();
+  gl.bindVertexArray(o); buf(v,"aPos",3,p); gl.bindVertexArray(null);
+  return {vao:o,n:arr.length/3};}
+const GX=Math.ceil(SPANX/2)+3, GZ=Math.ceil(SPANZ/2)+3;
+const minor=[],major=[];
+for(let i=-GX;i<=GX;i++){(i%5===0?major:minor).push(i,0,-GZ, i,0,GZ);}
+for(let k=-GZ;k<=GZ;k++){(k%5===0?major:minor).push(-GX,0,k, GX,0,k);}
+const gMinor=mkLines(minor,pLine), gMajor=mkLines(major,pLine);
+const gl_=[];
+for(const [y] of LEVELS){
+  const x=SPANX/2+0.6, z=SPANZ/2+0.6;
+  gl_.push(-x,y,-z, x,y,-z,  x,y,-z, x,y,z,  x,y,z, -x,y,z,  -x,y,z, -x,y,-z);
+}
+const gGuide=mkLines(gl_,pLine);
+
+/* ── texture de mosaique (photo reelle de la facade) ───────── */
+function makeTex(b64, fallback){
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+                new Uint8Array(fallback));
+  if(b64){
+    const im = new Image();
+    im.onload = () => {
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    };
+    im.src = "data:image/png;base64," + b64;
+  }
+  return t;
+}
+const texA = makeTex(GEOM.texA, [168,132,47,255]);
+const texT = makeTex(GEOM.texT, [142,107,58,255]);
+const texP = makeTex(GEOM.texP, [122,82,56,255]);
+const texB  = makeTex(GEOM.texB,  [200,192,174,255]);
+const texB2 = makeTex(GEOM.texB2, [200,192,174,255]);
+const texI = makeTex(GEOM.texI, [80,66,36,255]);
+const texD = makeTex(GEOM.texD, [158,128,88,255]);
+// Les indices de materiau viennent du modele : les coder en dur ici, c'est
+// repeindre la geometrie des qu'un materiau s'insere dans la liste.
+const MI = {}; (GEOM.names||[]).forEach((n,i)=>{MI[n]=i;});
+const PICS = __PICS__;
+const texGL = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, texGL);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+              new Uint8Array([150, 110, 50, 255]));           // en attendant le chargement
+if(GEOM.tex){
+  const im = new Image();
+  im.onload = () => {
+    gl.bindTexture(gl.TEXTURE_2D, texGL);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  };
+  im.src = "data:image/png;base64," + GEOM.tex;
+}
+
+/* ── palette, derivee des materiaux du batiment ──────────── */
+// 0 mur 1 brique 2 pierre 3 pierre claire 4 tuile 5 bois 6 metal 7 sombre
+// 8 mosaique 9 mos.fronton 10 mos.tympan 11 toit plat 12 marbre 13 enduit int.
+// 14 caissons 15 sol int. 16 motif de sol 17 marbre vert 18 inscription
+// 19 mos.abside 20 armoiries 21 vitrage 22 vitrail
+const HEX=["#AE5A3D","#C2603A","#A8543A","#E4DCCC","#DCD4C0","#F6F2E8","#C7A473","#98907F","#5A3A22",
+           "#2B2320","#1A1714","#5A3419","#4E3423","#C9A227","#8E6B3A","#8E6B3A","#6E6A66",
+           "#8C97A0","#EEE8DA","#6B3A1E","#D9D2C6","#5E6B66","#45524A",
+           "#6B5528","#7E6528","#9E8055","#A88C68","#A8842F","#C7BFAE","#C7BFAE",
+           "#D6B87E","#6E7370","#5A6360","#7A5238",
+           "#DCD8CE","#D18A73","#CCC7C2","#1C1C20","#EDEAE2","#C98A4E",
+           "#F2F0EC","#3A3A3E","#B9BDC1","#24242A","#6E7F82","#D8B87E","#C0705A","#575C5E",
+           "#BFC2BC","#D9C68F"];
+const toLin=h=>{const n=parseInt(h.slice(1),16);
+  return [((n>>16)&255)/255,((n>>8)&255)/255,(n&255)/255].map(v=>Math.pow(v,2.2));};
+const PAL=new Float32Array(HEX.flatMap(toLin));
+const CLAY=new Float32Array(toLin("#D8D1C4"));
+
+/* ── etat camera ─────────────────────────────────────────── */
+const VIEWS={
+  facade:{az:90, el:8,  d:0.62},
+  ouest:{ az:180,el:10, d:0.90},
+  abside:{az:-90,el:14, d:0.64},
+  axo:{   az:125,el:26, d:0.72}
+};
+const FOV=38*Math.PI/180;
+const RADIUS=0.5*Math.hypot(SPANX,SPANY,SPANZ);
+// La sphere englobante doit tenir dans le plus etroit des deux champs : en
+// portrait c'est l'horizontal qui contraint, d'ou le recalcul a chaque resize.
+function fitDist(){
+  const a=(W/H)||1, fy=FOV/2, fx=Math.atan(Math.tan(fy)*a);
+  return RADIUS/Math.sin(Math.min(fy,fx));
+}
+let az=125, el=26, zoom=0.72, dist=0, spin=false, clay=0, showGrid=false;
+// Progression normalisee 0..1 : le plan part hors du modele et vient a
+// l'axe de la nef. Animer la coordonnee brute donnait une course de 1000
+// unites, donc une transition de vingt secondes.
+let lastMVP=null;
+let cutOn=false, cutT=0, CUT_A=BB[0]-2.0, CUT_B=-1.0, cutNow=CUT_A;
+// Coupe horizontale. Le plan part au-dessus de la croix et descend au
+// niveau demande ; par defaut il passe juste sous le plafond a caissons, ce
+// qui decouvre la nef. La reglette permet de descendre plus bas pour voir
+// les bas-cotes, puis les voutes du narthex.
+let planOn=false, orthoOn=false, planT=0, PLAN_A=BB[4]+2.0, planLevel=16.0, planNow=PLAN_A;
+// Niveaux du corps de logis, releves sur les planches DoveVivo (piano primo,
+// secondo, terzo). La coupe passe a 1,25 m au-dessus du sol : hauteur d'appui,
+// les murs sont tranches, les allèges et le mobilier restent lisibles.
+const LVL_Y = [0.65, 6.05, 10.15, 16.05];
+const PLAN_FIT = [{c:[0,-0.4],  w:15.5, d:31.6},
+                  {c:[0,19.60], w:14.2, d:8.4},
+                  {c:[0,19.60], w:14.2, d:8.4},
+                  {c:[0,19.60], w:14.2, d:8.4}];
+
+/* ── visite guidee ───────────────────────────────────────── */
+// Parcours par images-cles, en coordonnees relatives au portail : approche,
+// ouverture des vantaux, traversee du narthex puis de la nef jusqu'a l'abside,
+// coup d'oeil au plafond, sortie, et enfin un tour complet du batiment.
+const DX = (GEOM.hinge ? (GEOM.hinge[0] + GEOM.hinge[1]) / 2 : 0);
+const DZ = (GEOM.hinge ? GEOM.hinge[2] : BB[5]);
+const TOUR = [
+  {t: 0.0, e:[DX,      16.0, DZ + 56], l:[DX,  9.5, DZ +  2],
+   c:"Fa\u00e7ade sur Via Boncompagni \u2014 Aristide Leonori, 1908"},
+  {t: 3.0, e:[DX,       5.0, DZ + 16], l:[DX,  5.4, DZ +  1],
+   c:"Fa\u00e7ade sur Via Boncompagni \u2014 Aristide Leonori, 1908"},
+  {t: 4.5, e:[DX,       17.0, DZ + 26], l:[DX, 19.3, DZ + 0.2],
+   c:"Mosa\u00efque du fronton : Patrick chassant les serpents", n:"mosfront"},
+  {t: 7.5, e:[DX,       17.0, DZ + 26], l:[DX, 19.3, DZ + 0.2],
+   c:"Mosa\u00efque du fronton : Patrick chassant les serpents", n:"mosfront"},
+  {t: 9.5, e:[DX + 4.30, 3.10, DZ + 2.6], l:[DX + 4.30, 2.90, DZ + 0.1],
+   c:"Alc\u00f4ve est : les armes du cardinal Collins, titulaire", n:"blasonb"},
+  {t:12.5, e:[DX + 4.30, 3.10, DZ + 2.6], l:[DX + 4.30, 2.90, DZ + 0.1],
+   c:"Alc\u00f4ve est : les armes du cardinal Collins, titulaire", n:"blasonb"},
+  {t:14.5, e:[DX,       3.30, DZ + 3.4], l:[DX,  4.10, DZ - 2.0],
+   c:"Le tympan : C\u00e9lestin I\u1d49\u02b3 envoie Patrick en Irlande", n:"mostymp"},
+  {t:17.5, e:[DX,       3.30, DZ + 3.4], l:[DX,  4.10, DZ - 2.0],
+   c:"Le tympan : C\u00e9lestin I\u1d49\u02b3 envoie Patrick en Irlande", n:"mostymp"},
+  {t:20.0, e:[DX,       2.9, DZ -  7], l:[DX,  3.4, DZ - 17],
+   c:"L\u2019atrium, neuf trav\u00e9es vo\u00fbt\u00e9es d\u2019ar\u00eates", n:"ocre"},
+  {t:23.0, e:[DX,       2.9, DZ -  7], l:[DX,  3.4, DZ - 17],
+   c:"L\u2019atrium, neuf trav\u00e9es vo\u00fbt\u00e9es d\u2019ar\u00eates", n:"ocre"},
+  {t:26.0, e:[DX,       2.9, DZ - 24], l:[DX,  4.6, DZ - 36],
+   c:"La nef \u2014 six arcades par c\u00f4t\u00e9, trav\u00e9e de 5,10 m", n:"marbrecol"},
+  {t:29.0, e:[DX,       2.9, DZ - 24], l:[DX,  4.6, DZ - 36],
+   c:"La nef \u2014 six arcades par c\u00f4t\u00e9, trav\u00e9e de 5,10 m", n:"marbrecol"},
+  {t:32.0, e:[DX,       3.6, DZ - 34], l:[DX,  9.2, DZ - 50],
+   c:"La conque \u2014 Rodolfo Villani, 1929 : Patrick pr\u00each\u00e2nt aux foules", n:"mosabside"},
+  {t:35.0, e:[DX,       3.6, DZ - 34], l:[DX,  9.2, DZ - 50],
+   c:"La conque \u2014 Rodolfo Villani, 1929 : Patrick pr\u00each\u00e2nt aux foules", n:"mosabside"},
+  {t:37.5, e:[DX,       5.4, DZ - 33], l:[DX, 16.5, DZ - 21],
+   c:"Le plafond \u00e0 caissons, \u00e0 15,90 m du dallage", n:"caisson"},
+  {t:40.5, e:[DX,       5.4, DZ - 33], l:[DX, 16.5, DZ - 21],
+   c:"Le plafond \u00e0 caissons, \u00e0 15,90 m du dallage", n:"caisson"},
+  {t:43.5, e:[DX,       9.8, DZ - 23], l:[DX, 10.4, DZ - 14.5],
+   c:"La C\u00e8ne \u2014 les colonnes de la tribune la d\u00e9coupent en trois", n:"tableau"},
+  {t:46.5, e:[DX,       9.8, DZ - 23], l:[DX, 10.4, DZ - 14.5],
+   c:"La C\u00e8ne \u2014 les colonnes de la tribune la d\u00e9coupent en trois", n:"tableau"},
+  {t:50.5, e:[0,       21.0,      52], l:[0,   9.0,       0],
+   c:"Le volume d\u2019ensemble \u2014 47,35 \u00d7 25,44 m, fa\u00eete \u00e0 21 m"},
+];
+const T_ORB0 = 50.5, T_END = 74;
+let tourOn=false, tourPlay=false, tourT=0, doorNow=0;
+
+/* ── etiquettes du plan ───────────────────────────────────── */
+// Le nom s'ecrit au centre de la piece, dans le plan du sol. On le retire des
+// que la piece devient trop petite a l'ecran : un plan illisible ment.
+const planWrap = document.getElementById("plan");
+const PIECES = GEOM.pieces || [];
+let planLvl = -1, planEls = [];
+function planLabels(MVP){
+  if(!orthoOn){
+    if(planLvl !== -1){ planWrap.textContent = ""; planEls = []; planLvl = -1; }
+    return;
+  }
+  const lvl = +etgSel.value;
+  if(lvl !== planLvl){
+    planWrap.textContent = ""; planEls = []; planLvl = lvl;
+    for(const p of PIECES){
+      if(p.l !== lvl) continue;
+      const d = document.createElement("div");
+      d.innerHTML = "<b></b><i></i>";
+      d.firstChild.textContent = p.n;
+      d.lastChild.textContent = p.a.toFixed(1).replace(".", ",") + " m²";
+      planWrap.appendChild(d);
+      planEls.push({d, p});
+    }
+  }
+  const sx = v => (v * 0.5 + 0.5) * W, sy = v => (0.5 - v * 0.5) * H;
+  const px = (x, y, z) => [
+    MVP[0]*x + MVP[4]*y + MVP[8]*z + MVP[12],
+    MVP[1]*x + MVP[5]*y + MVP[9]*z + MVP[13]];
+  for(const {d, p} of planEls){
+    const a = px(p.x0, p.y, p.z0), b = px(p.x1, p.y, p.z1);
+    const w = Math.abs(sx(b[0]) - sx(a[0])), h = Math.abs(sy(b[1]) - sy(a[1]));
+    if(w < 58 || h < 26){ d.style.display = "none"; continue; }
+    d.style.display = "";
+    d.style.left = ((sx(a[0]) + sx(b[0])) / 2) + "px";
+    d.style.top  = ((sy(a[1]) + sy(b[1])) / 2) + "px";
+    d.lastChild.style.display = h < 40 ? "none" : "";
+  }
+}
+
+/* ── balade a hauteur d'homme ─────────────────────────────── */
+// Le modele n'a pas d'escalier : on definit des secteurs praticables a plancher
+// constant, et l'on contraint le promeneur a y rester. Passer d'un niveau a
+// l'autre se fait par la liste « Aller a » — c'est honnete, et cela evite de
+// traverser les murs.
+const EYE_H = 1.65;
+// Cage d'escalier, meme trace que le modele : deux volees dos a dos par etage
+// autour d'un demi-palier. On rend la hauteur du nez de marche sous le
+// promeneur, ce qui permet de monter pour de bon jusqu'a la terrasse.
+const CG = { x0:7.14, xp:10.69, x1:11.74, z0:17.69, zm:19.25, z1:20.80 };
+const ETAGES = [[0.65, 6.05], [6.05, 10.15], [10.15, 15.96]];
+function marche(x, z, bas, haut){
+  const mi = (bas + haut) / 2;
+  if(x > CG.xp) return mi;                                   // demi-palier est
+  const t = Math.min(1, Math.max(0, (x - CG.x0) / (CG.xp - CG.x0)));
+  return z > CG.zm ? bas + (mi - bas) * t                    // volee montante
+                   : mi + (haut - mi) * (1 - t);             // volee de retour
+}
+function cageY(x, z, cur){
+  let best = null;
+  for(const [b, t] of ETAGES){
+    const h = marche(x, z, b, t);
+    if(best === null || Math.abs(h - cur) < Math.abs(best - cur)) best = h;
+  }
+  return best;
+}
+// Emprise du logement : du mur mitoyen avec l'eglise (Z 12,90) au nu de
+// facade (Z 27,10). Le vide sur le salon traverse le second etage.
+const LZ0 = 12.99, LZ1 = 27.10;
+const VD = { x0:-5.12, x1:5.13, z0:15.03, z1:19.53 };       // vide sur le salon
+const etage = y => ([
+  {x:[-12.4, VD.x0], z:[LZ0, LZ1], y},
+  {x:[VD.x1, 12.4],  z:[LZ0, LZ1], y},
+  {x:[VD.x0, VD.x1], z:[VD.z1, LZ1], y},
+  {x:[VD.x0, VD.x1], z:[LZ0, VD.z0], y},
+]);
+const ZONES = [
+  { x:[CG.x0, CG.x1], z:[CG.z0, CG.z1], escalier:true },     // la cage
+  {x:[-17, 17],   z:[DZ + 0.4, DZ + 22], y:0.35},          // parvis
+  {x:[-3.4, 2.8], z:[DZ - 2.4, DZ + 0.6], y:0.65},          // portique
+  {x:[-7.9, 5.8], z:[DZ - 16.2, DZ - 0.6], y:0.65},         // narthex
+  {x:[-12.3, 10.9], z:[DZ - 47.3, DZ - 16.2], y:0.65},      // nef et bas-cotes
+  {x:[-6.1, 5.3], z:[DZ - 53.5, DZ - 47.3], y:0.65},        // choeur
+  {x:[7.0, 12.5],   z:[LZ0, LZ1], y:15.96},                 // terrasse est
+  {x:[-12.5, -7.7], z:[LZ0, LZ1], y:15.96},                 // terrasse ouest
+  {x:[-5.12, 5.13], z:[21.72, 26.92], y:16.05},             // logement du 3e
+  {x:[5.13, 7.05],  z:[23.6, 26.92], y:16.05},              // passage vers l'escalier
+  ...etage(6.05),                                            // premier etage
+  ...etage(10.15),                                           // second etage
+];
+const SPAWNS = [
+  {n:"Devant l\u2019entrée", p:[DX, DZ + 9.0],  a:0},
+  {n:"Le portique",        p:[DX, DZ + 1.6],  a:0},
+  {n:"L\u2019atrium",         p:[DX, DZ - 8.0],  a:0},
+  {n:"La nef",             p:[DX, DZ - 26.0], a:0},
+  {n:"Le ch\u0153ur",         p:[DX, DZ - 44.0], a:0},
+  {n:"Sous la tribune",    p:[DX, DZ - 20.0], a:180},
+  {n:"La terrasse",        p:[9.7, DZ - 6.0], a:200},
+  {n:"Pied de l\u2019escalier", p:[6.6, 19.4], a:90},
+  {n:"1\u1d49\u02b3 \u00e9tage \u2014 couloir", p:[0.0, 21.6], a:90},
+  {n:"2\u1d49 \u00e9tage \u2014 couloir",  p:[0.0, 21.6], a:90, y:10.15},
+  {n:"Salon commun",        p:[0.0, 17.4], a:180, y:6.05},
+  {n:"3\u1d49 \u00e9tage \u2014 sous comble", p:[0.0, 24.0], a:180, y:16.05},
+];
+let walkOn=false, wx=DX, wz=DZ+9, wy=2.0, wyaw=0, wpitch=-2;
+const keys=new Set();
+let joyV=[0,0], gazeId=-1, gazeT=0, gazeHold=0, gazeShown=-1;
+function zoneAt(x, z, cur){
+  let best = null, d = Infinity;
+  for(const q of ZONES){
+    if(!(x>q.x[0] && x<q.x[1] && z>q.z[0] && z<q.z[1])) continue;
+    if(cur === undefined) return q;
+    const h = q.escalier ? cageY(x, z, cur) : q.y;
+    const e = Math.abs(h - cur);
+    if(e < d){ d = e; best = q; }                 // le plancher le plus proche
+  }
+  return best;
+}
+function solY(q, x, z, cur){
+  return q ? (q.escalier ? cageY(x, z, cur) : q.y) : 0.35;
+}
+function walkGoto(i){
+  const s=SPAWNS[i]; if(!s) return;
+  wx=s.p[0]; wz=s.p[1]; wyaw=s.a; wpitch=-2;
+  if(s.y !== undefined){ wy = s.y + EYE_H; return; }
+  const q=zoneAt(wx,wz);
+  wy=(q ? (q.escalier ? marche(wx,wz,ETAGES[0][0],ETAGES[0][1]) : q.y) : 0.35)+EYE_H;
+}
+function tourCam(t){
+  if(t >= T_ORB0){
+    const u=(t-T_ORB0)/(T_END-T_ORB0), th=Math.PI/2+u*2*Math.PI, R=52;
+    return {e:[Math.cos(th)*R, 21, Math.sin(th)*R], l:[0, 9, 0]};
+  }
+  let i=0; while(i<TOUR.length-2 && t>TOUR[i+1].t) i++;
+  const a=TOUR[i], b=TOUR[i+1];
+  const u=Math.min(1,Math.max(0,(t-a.t)/(b.t-a.t))), k=u*u*(3-2*u);
+  const mix=(p,q)=>[p[0]+(q[0]-p[0])*k, p[1]+(q[1]-p[1])*k, p[2]+(q[2]-p[2])*k];
+  return {e:mix(a.e,b.e), l:mix(a.l,b.l)};
+}
+const capEl=document.getElementById("cap");
+capEl.addEventListener("click",()=>{ const k=capEl.dataset.note; if(k) showNote(MI[k]); });
+// Repere du modele : x transversal, y vertical, z de l'abside (negatif) vers
+// la facade (positif). Chaque prise de vue a ete cadree a la main.
+const WORKS = [
+  {n:"mosfront",  e:[-0.29, 15.6, 41.0], l:[-0.29, 19.3, 27.3]},
+  {n:"mostymp",   e:[-0.29,  3.7, 33.4], l:[-0.29,  3.95, 27.0]},
+  {n:"blason",    e:[-4.59,  3.10, 30.4], l:[-4.59,  3.17, 27.3]},
+  {n:"blasonb",   e:[ 4.01,  3.10, 30.4], l:[ 4.01,  3.17, 27.3]},
+  {n:"ocre",      e:[-0.29,  2.30, 20.5], l:[-0.29,  3.60, 13.0]},
+  {n:"tableau",   e:[-0.29, 10.00,  2.2], l:[-0.29, 10.75, 12.9]},
+  {n:"marbrecol", e:[-0.29,  2.30,  8.0], l:[-0.29,  5.50,-12.0]},
+  {n:"caisson",   e:[-0.29,  5.00, -2.0], l:[-0.29, 16.20,-12.0]},
+  {n:"mosabside", e:[-0.37,  4.20, -6.2], l:[-0.37, 10.00,-20.0]},
+  {n:"nuit",      e:[-9.83,  2.60, -8.0], l:[-9.83,  4.50,-19.5]},
+];
+let fly = null;
+function flyTo(eye, look){
+  const d=[eye[0]-look[0], eye[1]-look[1], eye[2]-look[2]];
+  const r=Math.hypot(d[0],d[1],d[2]) || 1;
+  const toAz=Math.atan2(d[2],d[0])*180/Math.PI;
+  fly={t:0, fa:az, fe:el, fz:zoom, ft:[...target],
+       da:((toAz-az)%360+540)%360-180,          // chemin angulaire le plus court
+       te:Math.asin(d[1]/r)*180/Math.PI,
+       tz:Math.max(0.03, r/fitDist()), tt:[...look]};
+  if(tourOn) stopTour();
+  spin=false; sync();
+}
+function stopTour(){ capEl.hidden=true; tourOn=false; tourPlay=false; tourT=0; doorNow=0; sync(); }
+function tourStep(t){
+  let i=0; while(i<TOUR.length-1 && t>TOUR[i+1].t) i++;
+  return t >= T_ORB0 ? TOUR[TOUR.length-1] : TOUR[i];
+}
+let target=[...TARGET];
+
+function camPos(){
+  const a=az*Math.PI/180, e=el*Math.PI/180;
+  return [target[0]+dist*Math.cos(e)*Math.cos(a),
+          target[1]+dist*Math.sin(e),
+          target[2]+dist*Math.cos(e)*Math.sin(a)];
+}
+
+/* ── interaction ─────────────────────────────────────────── */
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+let dragDist=0;
+let ptrs=new Map(), mode=null, lastPt=null, pinchD=0, pinchC=null;
+const list=()=>[...ptrs.values()];
+const mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
+
+function orbit(dx,dy){
+  // Glisser a droite = tourner le modele a droite : la camera orbite a gauche,
+  // donc l'azimut augmente. (Le signe inverse donnait la sensation contraire.)
+  az += dx*0.32;
+  el = clamp(el + dy*0.26, -14, 82);
+}
+function pan(dx,dy){
+  const a=az*Math.PI/180, s=dist*0.0016;
+  // droite-ecran en monde = (sin a, 0, -cos a) ; la scene suit le doigt
+  target[0]-=Math.sin(a)*dx*s;
+  target[2]+=Math.cos(a)*dx*s;
+  target[1]+=dy*s;
+}
+
+function trySelect(e){                             // clic net = selection
+  if(dragDist>=5 || !lastMVP) return;
+  const r=cv.getBoundingClientRect();
+  showNote(pickAt(e.clientX-r.left, e.clientY-r.top));
+}
+// Les deux : selon le navigateur, "pointerup" peut ne pas etre delivre apres
+// une capture de pointeur, alors que "click" l'est toujours.
+cv.addEventListener("pointerup", e=>{ if(ptrs.size<=1) trySelect(e); });
+cv.addEventListener("click", trySelect);
+// Toucher la scene arrete la visite : sans cela la camera reste confisquee.
+cv.addEventListener("pointerdown",()=>{ fly=null; if(tourOn) stopTour(); });
+cv.addEventListener("wheel",()=>{ if(tourOn) stopTour(); },{passive:true});
+cv.addEventListener("pointerdown",e=>{
+  dragDist=0;
+  cv.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  spin=false; sync(); cv.classList.add("dragging");
+  if(ptrs.size===1){ mode=(e.shiftKey||e.button===2)?"pan":"orbit"; lastPt={x:e.clientX,y:e.clientY}; }
+  else if(ptrs.size===2){ const[a,b]=list(); mode="two"; pinchD=Math.hypot(a.x-b.x,a.y-b.y); pinchC=mid(a,b); }
+});
+cv.addEventListener("pointermove",e=>{
+  if(!ptrs.has(e.pointerId))return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(mode==="two"&&ptrs.size>=2){
+    const[a,b]=list(), d=Math.hypot(a.x-b.x,a.y-b.y), c=mid(a,b);
+    if(pinchD>0&&d>0) zoom=clamp(zoom*pinchD/d,0.22,3.2);
+    pan(c.x-pinchC.x, c.y-pinchC.y);      // pan a deux doigts
+    pinchD=d; pinchC=c; return;
+  }
+  if(!mode||!lastPt)return;
+  const dx=e.clientX-lastPt.x, dy=e.clientY-lastPt.y;
+  lastPt={x:e.clientX,y:e.clientY};
+  dragDist+=Math.abs(dx)+Math.abs(dy);
+  if(walkOn){
+    // Glisser a droite = tourner la tete a droite. En balade on regarde dans
+    // la direction du geste, contrairement a l'orbite ou l'on fait tourner
+    // l'objet sous les doigts.
+    wyaw   += dx * 0.20;
+    wpitch  = Math.max(-85, Math.min(85, wpitch - dy * 0.20));
+    return;
+  }
+  (mode==="pan"||orthoOn?pan:orbit)(dx,dy);
+});
+function release(e){
+  ptrs.delete(e.pointerId);
+  if(ptrs.size===1){ const p=list()[0]; mode="orbit"; lastPt={x:p.x,y:p.y}; pinchD=0; }
+  else if(ptrs.size===0){ mode=null; lastPt=null; pinchD=0; cv.classList.remove("dragging"); }
+}
+cv.addEventListener("pointerup",release);
+cv.addEventListener("pointercancel",release);
+cv.addEventListener("contextmenu",e=>e.preventDefault());
+cv.addEventListener("wheel",e=>{e.preventDefault();
+  zoom=clamp(zoom*(1+Math.sign(e.deltaY)*0.11),0.22,3.2);},{passive:false});
+
+function goto(k){const v=VIEWS[k]; az=v.az; el=v.el; zoom=v.d; target=[...TARGET];
+  spin=false; if(tourOn) stopTour(); sync();}
+document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>goto(b.dataset.view)));
+const bClay=document.getElementById("bClay"), bGrid=document.getElementById("bGrid"),
+      bSpin=document.getElementById("bSpin"),
+      bTour=document.getElementById("bTour"),
+      bInside=document.getElementById("bInside"), modeBox=document.getElementById("modeBox"),
+      mLong=document.getElementById("mLong"), mHaut=document.getElementById("mHaut"),
+      mPlan=document.getElementById("mPlan"), etgBox=document.getElementById("etgBox"),
+      etgSel=document.getElementById("etgSel"),
+      planBox=document.getElementById("planBox"),
+      planZ=document.getElementById("planZ"), planOut=document.getElementById("planOut");
+bClay.addEventListener("click",()=>{clay=clay?0:1; sync();});
+bGrid.addEventListener("click",()=>{showGrid=!showGrid; sync();});
+bSpin.addEventListener("click",()=>{spin=!spin; sync();});
+// Un seul bouton dit ce qu'on fait ; la maniere de couper est une sous-option,
+// car « coupe » et « plan » designaient deux fois la meme chose pour qui ne
+// lit pas des plans d'architecte.
+let insideOn=false, insideMode="long";
+function applyInside(){
+  cutOn  = insideOn && insideMode==="long";
+  planOn = insideOn && (insideMode==="haut" || insideMode==="plan");
+  orthoOn = insideOn && insideMode==="plan";
+  if(orthoOn){
+    // Un plan ne se devoile pas : la coupe se pose d'emblee au bon niveau.
+    const l = +etgSel.value;
+    planLevel = LVL_Y[l] + 1.25; zoom = 1.0; planT = 1; planNow = planLevel;
+    target = [PLAN_FIT[l].c[0], 0, PLAN_FIT[l].c[1]];
+  }
+  if(cutOn){ az=168; el=10; zoom=0.52; target=[...TARGET]; }  // flanc ouest : le
+  if(planOn && el<34) el=54;               // seul cote d'ou la coupe s'ouvre
+  sync();
+}
+const bMore=document.getElementById("bMore"), moreMenu=document.getElementById("moreMenu"),
+      ctxBar=document.getElementById("ctxBar");
+function setMenu(open){
+  moreMenu.hidden=!open; bMore.setAttribute("aria-expanded",open?"true":"false");
+  chrome();
+}
+function chrome(){
+  const o = !moreMenu.hidden || !document.getElementById("worksPanel").hidden;
+  document.body.classList.toggle("panel-open", o);
+}
+bMore.addEventListener("click",e=>{ e.stopPropagation(); setMenu(moreMenu.hidden); });
+
+
+moreMenu.addEventListener("click",()=>setMenu(false));
+document.addEventListener("click",e=>{ if(!moreMenu.hidden && !moreMenu.contains(e.target)) setMenu(false); });
+bInside.addEventListener("click",()=>{insideOn=!insideOn; applyInside();});
+const bWalk=document.getElementById("bWalk"), walkBox=document.getElementById("walkBox"),
+      walkGo=document.getElementById("walkGo"), joy=document.getElementById("joy");
+SPAWNS.forEach((s,i)=>{
+  const o=document.createElement("option"); o.value=i; o.textContent=s.n; walkGo.append(o);
+});
+walkGo.addEventListener("change",()=>{ walkGoto(+walkGo.value); keys.clear(); walkGo.blur(); });
+walkGo.addEventListener("focus",()=>keys.clear());
+addEventListener("blur",()=>keys.clear());
+document.addEventListener("visibilitychange",()=>keys.clear());
+bWalk.addEventListener("click",()=>{
+  walkOn=!walkOn;
+  if(walkOn){ if(tourOn) stopTour(); insideOn=false; applyInside(); spin=false;
+              fly=null; walkGoto(+walkGo.value||0); }
+  else { capEl.hidden=true; gazeShown=-1; }
+  sync();
+});
+addEventListener("keydown",e=>{
+  const t=e.target;
+  if(!walkOn || (t && (t.tagName==="SELECT" || t.tagName==="INPUT"))) return;
+  keys.add(e.key.toLowerCase());
+});
+addEventListener("keyup",  e=>{ keys.delete(e.key.toLowerCase()); });
+// Manette tactile : un cercle en bas a gauche donne la direction de marche.
+let joyId=null;
+joy.addEventListener("pointerdown",e=>{ joyId=e.pointerId; joy.setPointerCapture(e.pointerId); });
+joy.addEventListener("pointermove",e=>{
+  if(e.pointerId!==joyId) return;
+  const r=joy.getBoundingClientRect();
+  const dx=(e.clientX-r.left-r.width/2)/(r.width/2);
+  const dy=(e.clientY-r.top-r.height/2)/(r.height/2);
+  const m=Math.min(1,Math.hypot(dx,dy)) || 0;
+  const a=Math.atan2(dy,dx);
+  joyV=[Math.cos(a)*m, Math.sin(a)*m];
+  joy.firstElementChild.style.transform=`translate(${joyV[0]*26}px,${joyV[1]*26}px)`;
+});
+const joyEnd=()=>{ joyId=null; joyV=[0,0]; joy.firstElementChild.style.transform=""; };
+joy.addEventListener("pointerup",joyEnd); joy.addEventListener("pointercancel",joyEnd);
+bTour.addEventListener("click",()=>{
+  if(!tourOn){                       // la visite se joue sur le volume complet
+    tourOn=true; tourT=0; insideOn=false; applyInside(); spin=false;
+  }
+  if(tourT>=T_END) tourT=0;
+  tourPlay=!tourPlay;
+  sync();
+});
+mLong.addEventListener("click",()=>{insideMode="long"; applyInside();});
+mHaut.addEventListener("click",()=>{insideMode="haut"; applyInside();});
+mPlan.addEventListener("click",()=>{insideMode="plan"; applyInside();});
+etgSel.addEventListener("change",()=>{ applyInside(); });
+planZ.addEventListener("input",()=>{planLevel=+planZ.value; sync();});
+function sync(){
+  bClay.setAttribute("aria-pressed",clay?"true":"false");
+  bGrid.setAttribute("aria-pressed",showGrid?"true":"false");
+  bSpin.setAttribute("aria-pressed",spin?"true":"false");
+  bInside.setAttribute("aria-pressed",insideOn?"true":"false");
+  bTour.setAttribute("aria-pressed",tourOn?"true":"false");
+  bWalk.setAttribute("aria-pressed",walkOn?"true":"false");
+  walkBox.hidden=!walkOn; joy.hidden=!walkOn;
+  bTour.textContent = !tourOn ? "Visite" : (tourPlay ? "Pause" : "Reprendre");
+  mLong.setAttribute("aria-pressed",insideMode==="long"?"true":"false");
+  mHaut.setAttribute("aria-pressed",insideMode==="haut"?"true":"false");
+  mPlan.setAttribute("aria-pressed",insideMode==="plan"?"true":"false");
+  etgBox.hidden=!orthoOn;
+  ctxBar.hidden=!insideOn;
+  planBox.hidden=!planOn||orthoOn;
+  planOut.textContent=(planLevel-0.35).toFixed(1).replace(".",",")+" m";
+  document.getElementById("legend").hidden=!showGrid;
+  tagBox.style.display=showGrid?"":"none";
+}
+addEventListener("keydown",e=>{
+  if(e.target.tagName==="BUTTON"&&e.key===" ")return;
+  const k=e.key.toLowerCase();
+  const m={"1":"facade","2":"ouest","3":"abside","4":"axo"};
+  if(m[k]) goto(m[k]);
+  else if(k==="c"){clay=clay?0:1;sync();}
+  else if(k==="g"){showGrid=!showGrid;sync();}
+  else if(k==="r"){spin=!spin;sync();}
+  else if(k==="x"){bInside.click();}
+  else if(k==="v"){bTour.click();}
+  else if(k==="h"){insideMode = insideMode==="long"?"haut":"long"; applyInside();}
+});
+
+/* ── etiquettes de niveau ────────────────────────────────── */
+const tagBox=document.getElementById("tags");
+const tags=LEVELS.map(([y,label])=>{
+  const el=document.createElement("div"); el.className="tag"; el.textContent=label;
+  tagBox.appendChild(el); return {y,el};
+});
+
+/* ── theme ───────────────────────────────────────────────── */
+let SKY=[0,0,0],GND=[0,0,0],CLR=[0,0,0];
+function readTheme(){
+  const cs=getComputedStyle(document.documentElement);
+  const hex=n=>cs.getPropertyValue(n).trim()||"#000";
+  const lin=h=>toLin(h.length===4?"#"+[...h.slice(1)].map(c=>c+c).join(""):h);
+  CLR=lin(hex("--canvas-b")); SKY=lin(hex("--canvas-a")); GND=lin(hex("--canvas-b"));
+  const dark=SKY[0]<0.1;
+  SKY=SKY.map(v=>v*0+ (dark?0.30:0.92)); GND=GND.map(v=>v*0+(dark?0.06:0.34));
+}
+readTheme();
+matchMedia("(prefers-color-scheme:dark)").addEventListener("change",readTheme);
+new MutationObserver(readTheme).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+/* ── boucle ──────────────────────────────────────────────── */
+let W=0,H=0;
+function resize(){
+  // surechantillonnage : on rend au-dela de la densite ecran puis on
+  // laisse le navigateur reduire — c'est ce qui lisse les arcatures
+  const SS=1.7, cap=3.2;
+  const dpr=Math.min((devicePixelRatio||1)*SS, cap);
+  W=cv.clientWidth; H=cv.clientHeight;
+  cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
+  gl.viewport(0,0,cv.width,cv.height);
+}
+addEventListener("resize",resize); resize();
+
+const reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  const goal = cutOn ? 1 : 0;
+  if(reduce) cutT = goal;
+  else if(cutT !== goal){
+    const sp = dt / 0.65;                      // ~0,65 s de transition
+    cutT = cutT < goal ? Math.min(goal, cutT + sp) : Math.max(goal, cutT - sp);
+  }
+  const e = cutT<0.5 ? 2*cutT*cutT : 1-Math.pow(-2*cutT+2,2)/2;   // ease-in-out
+  cutNow = CUT_A + (CUT_B - CUT_A) * e;
+  const pgoal = planOn ? 1 : 0;
+  if(reduce) planT = pgoal;
+  else if(planT !== pgoal){
+    const sp = dt / 0.65;
+    planT = planT < pgoal ? Math.min(pgoal, planT + sp) : Math.max(pgoal, planT - sp);
+  }
+  const pe = planT<0.5 ? 2*planT*planT : 1-Math.pow(-2*planT+2,2)/2;
+  planNow = PLAN_A + (planLevel - PLAN_A) * pe;
+  if(spin&&!reduce) az-=dt*9;
+  if(cv.clientWidth!==W||cv.clientHeight!==H) resize();
+
+  let eye, P, V;
+  if(walkOn){
+    // Deplacement : ZQSD, WASD ou fleches au clavier, manette au doigt.
+    let fwd=0, sid=0;
+    if(keys.has("z")||keys.has("w")||keys.has("arrowup"))    fwd += 1;
+    if(keys.has("s")||keys.has("arrowdown"))                 fwd -= 1;
+    if(keys.has("q")||keys.has("a")||keys.has("arrowleft"))  sid -= 1;
+    if(keys.has("d")||keys.has("arrowright"))                sid += 1;
+    fwd -= joyV[1]; sid += joyV[0];
+    const sp = (keys.has("shift") ? 4.6 : 2.4) * dt;
+    const ya = wyaw*Math.PI/180;
+    const nx = wx + (Math.sin(ya)*fwd + Math.cos(ya)*sid) * sp;
+    const nz = wz + (-Math.cos(ya)*fwd + Math.sin(ya)*sid) * sp;
+    // Un secteur a la fois : on n'entre pas dans les murs, et l'axe qui reste
+    // valide continue de repondre, ce qui evite de se coincer dans un angle.
+    const pieds = wy - EYE_H;
+    let q = zoneAt(nx, nz, pieds);
+    if(q){ wx=nx; wz=nz; }
+    else if((q = zoneAt(nx, wz, pieds))) wx=nx;
+    else if((q = zoneAt(wx, nz, pieds))) wz=nz;
+    else q = zoneAt(wx, wz, pieds);
+    wy += (solY(q, wx, wz, pieds) + EYE_H - wy) * Math.min(1, dt*7);
+    // Les vantaux s'ouvrent quand on s'approche du portail.
+    const near = Math.abs(wx-DX) < 3.4 && Math.abs(wz-DZ) < 7.0;
+    doorNow += ((near?1:0) - doorNow) * Math.min(1, dt*2.6);
+    const pa = wpitch*Math.PI/180;
+    eye = [wx, wy, wz];
+    P = M4.persp(FOV, W/H||1, 0.12, 260);
+    V = M4.look(eye, [wx + Math.sin(ya)*Math.cos(pa),
+                      wy + Math.sin(pa),
+                      wz - Math.cos(ya)*Math.cos(pa)], [0,1,0]);
+  }else if(tourOn){
+    if(tourPlay && !reduce && shEl.hidden){
+      tourT += dt;
+      if(tourT >= T_END){ tourT = T_END; tourPlay = false; sync(); }
+    }
+    // Les vantaux s'ouvrent avant que la camera n'arrive au portail.
+    doorNow = Math.min(1, Math.max(0, (tourT - 12.8) / 2.6));
+    const c = tourCam(tourT);
+    eye = c.e;
+    const st = tourStep(tourT);
+    if(capEl.textContent !== (st.c||"")){
+      capEl.textContent = st.c || "";
+      if(st.n) capEl.dataset.note = st.n; else delete capEl.dataset.note;
+    }
+    capEl.hidden = !st.c;
+    P = M4.persp(FOV, W/H||1, 0.30, 300);
+    V = M4.look(eye, c.l, [0,1,0]);
+  }else{
+    doorNow = 0; capEl.hidden = true; gazeShown = -1;
+    if(fly){                                   // vol vers une oeuvre
+      fly.t = Math.min(1, fly.t + dt/0.9);
+      const k = fly.t<0.5 ? 2*fly.t*fly.t : 1-Math.pow(-2*fly.t+2,2)/2;
+      az = fly.fa + fly.da*k;
+      el = fly.fe + (fly.te-fly.fe)*k;
+      zoom = fly.fz + (fly.tz-fly.fz)*k;
+      target = fly.ft.map((v,i)=>v + (fly.tt[i]-v)*k);
+      if(fly.t>=1) fly=null;
+    }
+    dist=fitDist()*zoom;
+    eye=camPos();
+  // near/far colles a la scene : une plage large ecrase la precision du
+  // depth buffer et fait scintiller les surfaces proches (z-fighting)
+    const FLOOR_Y = 0.65;
+    if(Math.abs(eye[0]) < 13.2 && Math.abs(eye[2]) < 29.0)
+      eye[1] = Math.max(eye[1], FLOOR_Y + 0.60);       // dans l'emprise batie
+    eye[1] = Math.max(eye[1], 0.30);                   // et jamais sous le terrain
+    if(orthoOn){
+      // On cadre l'emprise a lire, puis on l'etend sur l'axe le plus large :
+      // le plan garde ainsi son echelle quel que soit le format de l'ecran.
+      // En portrait, le plan pivote d'un quart de tour : un corps deux fois plus
+      // long que large ne tient pas autrement sur un ecran de telephone.
+      const f = PLAN_FIT[+etgSel.value], a = (W/H) || 1, deb = a < 1;
+      let hx = (deb ? f.d : f.w) * zoom, hz = (deb ? f.w : f.d) * zoom;
+      if(hx / hz < a) hx = hz * a; else hz = hx / a;
+      // Plage de profondeur serree sur le batiment : etalee sur 400 m, elle
+      // ne separait plus deux surfaces distantes de deux centimetres.
+      eye = [target[0], BB[4] + 12, target[2]];
+      P = M4.ortho(-hx, hx, -hz, hz, 2, BB[4] + 22);
+      V = M4.look(eye, [target[0], 0, target[2]],
+                  deb ? [1, 0, 0] : [0, 0, -1]);     // l'est, ou l'abside, en haut
+    }else{
+      const near=Math.max(0.35, dist-RADIUS*1.7), far=dist+RADIUS*2.4;
+      P=M4.persp(FOV, W/H||1, near, far);
+      V=M4.look(eye,target,[0,1,0]);
+    }
+  }
+  const MVP=M4.mul(P,V); lastMVP=MVP;
+  planLabels(MVP);
+
+  gl.clearColor(CLR[0],CLR[1],CLR[2],1);
+  gl.enable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
+  gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
+  if(showGrid){
+    gl.useProgram(pLine);
+    gl.uniformMatrix4fv(gl.getUniformLocation(pLine,"uMVP"),false,new Float32Array(MVP));
+    const uC=gl.getUniformLocation(pLine,"uC");
+    const d=CLR[0]<0.02, base=d?[1,1,1]:[0,0,0];
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+    gl.uniform4f(uC,base[0],base[1],base[2],d?0.055:0.075);
+    gl.bindVertexArray(gMinor.vao); gl.drawArrays(gl.LINES,0,gMinor.n);
+    gl.uniform4f(uC,base[0],base[1],base[2],d?0.13:0.16);
+    gl.bindVertexArray(gMajor.vao); gl.drawArrays(gl.LINES,0,gMajor.n);
+    const a=toLin(getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()||"#A34B33");
+    gl.uniform4f(uC,a[0],a[1],a[2],0.85);
+    gl.bindVertexArray(gGuide.vao); gl.drawArrays(gl.LINES,0,gGuide.n);
+    gl.disable(gl.BLEND);
+  }
+
+  gl.useProgram(pMesh);
+  gl.uniformMatrix4fv(gl.getUniformLocation(pMesh,"uMVP"),false,new Float32Array(MVP));
+  gl.uniform3fv(gl.getUniformLocation(pMesh,"uPal"),PAL);
+  gl.uniform1f(gl.getUniformLocation(pMesh,"uDoor"),doorNow);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uPorte"),MI.porte|0);
+  gl.uniform3fv(gl.getUniformLocation(pMesh,"uHinge"),
+                new Float32Array(GEOM.hinge||[0,0,0]));
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,texGL);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uTex"),0);
+  gl.uniform4fv(gl.getUniformLocation(pMesh,"uBBf"),new Float32Array(GEOM.bbF||[0,1,0,1]));
+  gl.uniform4fv(gl.getUniformLocation(pMesh,"uBBt"),new Float32Array(GEOM.bbT||[0,1,0,1]));
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uMosF"),GEOM.mosF|0);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uVit"),GEOM.vit|0);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uMosT"),GEOM.mosT|0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,texA);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uTexA"),1);
+  gl.uniform4fv(gl.getUniformLocation(pMesh,"uBBa"),new Float32Array(GEOM.bbA||[0,1,0,1]));
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uMosA"),GEOM.mosA|0);
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D,texT);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uTexT"),2);
+  gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D,texP);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uTexP"),3);
+  gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D,texB);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uTexB"),4);
+  gl.activeTexture(gl.TEXTURE7); gl.bindTexture(gl.TEXTURE_2D,texB2);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uTexB2"),7);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uMosB"),MI.blason|0);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uMosB2"),MI.blasonb|0);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uMur"),MI.mur|0);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uBrq"),MI.brique|0);
+  gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D,texI);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uTexI"),5);
+  gl.activeTexture(gl.TEXTURE6); gl.bindTexture(gl.TEXTURE_2D,texD);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uTexD"),6);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uMosI"),GEOM.mosI|0);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uMosD"),GEOM.mosD|0);
+  gl.uniform4fv(gl.getUniformLocation(pMesh,"uBBi"),new Float32Array(GEOM.bbI||[0,1,0,1]));
+  gl.uniform4fv(gl.getUniformLocation(pMesh,"uBBd"),new Float32Array(GEOM.bbD||[0,1,0,1]));
+  gl.uniform4fv(gl.getUniformLocation(pMesh,"uBBb"),new Float32Array(GEOM.bbB||[0,1,0,1]));
+  gl.uniform4fv(gl.getUniformLocation(pMesh,"uBBb2"),new Float32Array(GEOM.bbB2||[0,1,0,1]));
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uMosP"),GEOM.mosP|0);
+  gl.uniform4fv(gl.getUniformLocation(pMesh,"uBBp"),new Float32Array(GEOM.bbP||[0,1,0,1]));
+  gl.uniform1f(gl.getUniformLocation(pMesh,"uCut"),cutNow);
+  gl.uniform1f(gl.getUniformLocation(pMesh,"uCutY"),planNow);
+  gl.uniform3fv(gl.getUniformLocation(pMesh,"uClayCol"),CLAY);
+  gl.uniform1f(gl.getUniformLocation(pMesh,"uClay"),clay);
+  gl.uniform3f(gl.getUniformLocation(pMesh,"uL"),0.48,0.78,0.40);
+  gl.uniform3fv(gl.getUniformLocation(pMesh,"uSky"),new Float32Array(SKY));
+  gl.uniform3fv(gl.getUniformLocation(pMesh,"uGnd"),new Float32Array(GND));
+  gl.uniform3f(gl.getUniformLocation(pMesh,"uEye"),eye[0],eye[1],eye[2]);
+  const uGlass=gl.getUniformLocation(pMesh,"uGlass");
+  const g0=(GEOM.glass0||0)*3;
+  gl.bindVertexArray(vaoMesh);
+  gl.uniform1f(uGlass,0.0);
+  gl.drawArrays(gl.TRIANGLES,0,g0);                       // opaques
+  if(GEOM.count>g0){                                       // puis le verre
+    gl.uniform1f(uGlass,1.0);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+    gl.depthMask(false);
+    gl.drawArrays(gl.TRIANGLES,g0,GEOM.count-g0);
+    gl.depthMask(true); gl.disable(gl.BLEND);
+  }
+  gl.bindVertexArray(null);
+
+  // etiquettes projetees
+  if(showGrid){
+    const px=SPANX/2+0.6, pz=SPANZ/2+0.6;
+    const placed=[];
+    for(const t of tags){
+      const p=[px,t.y,pz,1], o=[0,0,0,0];
+      for(let i=0;i<4;i++) o[i]=MVP[i]*p[0]+MVP[4+i]*p[1]+MVP[8+i]*p[2]+MVP[12+i];
+      if(o[3]<=0){ t.el.style.opacity=0; continue; }
+      const sx=(o[0]/o[3]*0.5+0.5)*W, sy=(1-(o[1]/o[3]*0.5+0.5))*H;
+      if(sy<4||sy>H-4){ t.el.style.opacity=0; continue; }
+      const w=t.el.offsetWidth||120;
+      placed.push({t, x:Math.max(8,Math.min(W-w-8, sx+9)), y:sy});
+    }
+    // ecarte les etiquettes qui se superposent, en partant du haut
+    placed.sort((a,b)=>a.y-b.y);
+    const GAPY=19;
+    for(let i=1;i<placed.length;i++){
+      if(placed[i].y-placed[i-1].y<GAPY) placed[i].y=placed[i-1].y+GAPY;
+    }
+    for(const q of placed){
+      q.t.el.style.opacity=1;
+      q.t.el.style.left=q.x+"px";
+      q.t.el.style.top=Math.min(H-10,q.y)+"px";
+    }
+  }
+
+  // Regard : on lit le materiau vise au centre de l'ecran. Au-dela d'une
+  // seconde sur la meme oeuvre, une legende discrete apparait en bas — jamais
+  // au milieu, pour ne pas masquer ce qu'on regarde.
+  if(walkOn){
+    gazeT += dt;
+    if(gazeT >= 0.2){
+      gazeT = 0;
+      const id = pickAt(W / 2, H / 2);
+      if(id !== gazeId){ gazeId = id; gazeHold = 0; }
+      else gazeHold += 0.2;
+      const nt = BY_ID[gazeId];
+      if(nt && gazeHold >= 1.0){
+        if(gazeShown !== gazeId){
+          gazeShown = gazeId;
+          capEl.textContent = nt.t;
+          capEl.dataset.note = (GEOM.names || [])[gazeId] || "";
+          capEl.hidden = false;
+        }
+      }else if(!nt){
+        capEl.hidden = true; gazeShown = -1;
+      }
+    }
+  }
+  requestAnimationFrame(frame);
+}
+/* ── mise en page compacte, mesuree ──────────────────────── */
+const blockEl=document.querySelector(".block"), bInfo=document.getElementById("bInfo");
+let userToggled=false;
+function setInfo(open){
+  blockEl.classList.toggle("block--min",!open);
+  bInfo.setAttribute("aria-expanded",open?"true":"false");
+  bInfo.setAttribute("aria-label",open?"Replier la fiche":"Déplier la fiche");
+}
+bInfo.addEventListener("click",()=>{
+  userToggled=true; setInfo(blockEl.classList.contains("block--min"));
+});
+function applyCompact(){
+  const w=document.getElementById("stage").getBoundingClientRect().width;
+  const c=w<760;
+  document.documentElement.classList.toggle("compact",c);
+  if(!userToggled) setInfo(!c);          // replie d'office sur petit ecran
+}
+applyCompact(); addEventListener("resize",applyCompact);
+
+/* ── zones cliquables : selection par tampon d'identifiants ───────────── */
+const NOTES = {
+  mosfront: {k:"Mosa\u00efque du fronton", t:"Saint Patrick chassant les serpents",
+    b:["Elle occupe l\u2019arche centrale de l\u2019arcature rampante qui suit les deux pentes du fronton, \u00e0 dix-neuf m\u00e8tres au-dessus de la rue.",
+       "Le saint est nimb\u00e9 et mitr\u00e9, la crosse en main, les serpents d\u2019Irlande \u00e0 ses pieds. L\u2019\u00e9pisode est l\u00e9gendaire : il n\u2019appara\u00eet qu\u2019au XI\u1d49 si\u00e8cle, bien apr\u00e8s la mort de Patrick vers 461."],
+    pics:[{f:"fronton_ia", c:"Restitution du panneau \u2014 image g\u00e9n\u00e9r\u00e9e, non un relev\u00e9"}],
+    s:"La niche est relev\u00e9e sur photographie ; le dessin de la mosa\u00efque ne l\u2019est pas."},
+
+  mostymp: {k:"Tympan du portail", t:"C\u00e9lestin I\u1d49\u02b3 envoie Patrick en Irlande",
+    b:["Au-dessus du linteau, \u00e0 2,78 m, une lunette de mosa\u00efque sur fond bleu et or, dans un chambranle moulur\u00e9 de 1,93 m de large.",
+       "Le pape C\u00e9lestin I\u1d49\u02b3 mandate Patrick pour l\u2019Irlande, en 431. La fa\u00e7ade tout enti\u00e8re, dit la notice de la ville, emprunte ses motifs au r\u00e9pertoire romano-byzantin : portique sur colonnes, loggia \u00e0 arcatures, frise de vigne."],
+    pics:[{f:"tympan_ia", c:"Restitution du tympan \u2014 image g\u00e9n\u00e9r\u00e9e"}],
+    s:"Cotes relev\u00e9es sur photographie de fa\u00e7ade ; le dessin de la mosa\u00efque est une restitution."},
+
+  mosabside: {k:"Conque de l\u2019abside", t:"Saint Patrick pr\u00eachant aux foules",
+    b:["Mosa\u00efque de Rodolfo Villani, 1929, sur fond d\u2019or.",
+       "Sous la conque court l\u2019inscription VT CHRISTIANI ITA ET ROMANI SITIS \u2014 \u00ab que vous soyez romains autant que chr\u00e9tiens \u00bb. Le revêtement de marbre vert sombre qui la porte monte \u00e0 7,20 m.",
+       "Le ma\u00eetre-autel conserve une image de la Vierge du XVI\u1d49 si\u00e8cle, provenant de l\u2019\u00e9glise Santa Maria in Posterula, d\u00e9truite \u00e0 la fin du XIX\u1d49 si\u00e8cle lors du percement des berges du Tibre."],
+    pics:[{f:"abside", c:"La conque et le presbyt\u00e8re \u2014 Wikimedia Commons, CC BY-SA"}],
+    s:"Texture du mod\u00e8le : cette photographie, projet\u00e9e frontalement."},
+
+  blason: {k:"Alc\u00f4ve ouest", t:"Les armes de Fran\u00e7ois",
+    b:["Les deux alc\u00f4ves qui encadrent le portail portent chacune une plaque ovale \u00e9maill\u00e9e \u2014 mais pas les m\u00eames armes. Celle de gauche, quand on regarde la fa\u00e7ade, porte celles du pape.",
+       "\u00c9cu d\u2019azur au soleil rayonnant charg\u00e9 du monogramme IHS, accompagn\u00e9 d\u2019une \u00e9toile et d\u2019une fleur de nard ; devise MISERANDO ATQUE ELIGENDO. Ce sont les armes de Fran\u00e7ois, pape de 2013 \u00e0 2025 : la plaque est donc bien post\u00e9rieure \u00e0 l\u2019\u00e9glise.",
+       "L\u2019\u00e9difice est b\u00e2ti en 1908 sur les plans d\u2019Aristide Leonori, dans un style n\u00e9o-Renaissance. Depuis le 1\u1d49\u02b3 ao\u00fbt 2017 il est desservi par les P\u00e8res paulistes et sert d\u2019\u00e9glise nationale des Am\u00e9ricains de Rome ; les messes s\u2019y disent en anglais."],
+    pics:[{f:"blason", pad:true, c:"Armes de Fran\u00e7ois \u2014 trac\u00e9 Wikimedia Commons"}],
+    s:"Identification faite d\u2019apr\u00e8s une photographie de la plaque en place."},
+
+  marbrecol: {k:"Colonnade", t:"Six arcades par c\u00f4t\u00e9",
+    b:["Trois nefs. L\u2019arcade alterne colonnes de marbre gris-bleu \u00e0 chapiteau corinthien et piles rectangulaires habill\u00e9es de panneaux de br\u00e8che ocre.",
+       "Trav\u00e9e de 5,10 m, naissance des arcs \u00e0 6,90 m, clef \u00e0 9,45 m. Des globes d\u2019opaline pendent des piles au-dessus de la nef ; le chemin de croix court sur les murs des bas-c\u00f4t\u00e9s, entre les baies."],
+    pics:[{f:"nef", c:"La nef vers le ch\u0153ur \u2014 Wikimedia Commons, CC BY-SA"}],
+    s:"Proportions horizontales mesur\u00e9es ; les hauteurs sont d\u00e9duites du volume ext\u00e9rieur."},
+
+  caisson: {k:"Plafond", t:"Le plafond \u00e0 caissons",
+    b:["Un plafond de bois sombre \u00e0 caissons carr\u00e9s, portant chacun une rosace sculpt\u00e9e. C\u2019est l\u2019un des rares \u00e9l\u00e9ments que les descriptions anciennes citent nomm\u00e9ment : \u00ab tre navate con soffitto a cassettoni \u00bb.",
+       "Sa sous-face est \u00e0 15,90 m au-dessus du dallage, soit plus haut que le fa\u00eete des bas-c\u00f4t\u00e9s."],
+    pics:[{f:"caissons", c:"Les caissons au-dessus de la nef"}],
+    s:"Rythme relev\u00e9 sur photographie ; la cote de 15,90 m est d\u00e9duite."},
+
+  tableau: {k:"Tribune", t:"La C\u00e8ne de la contre-fa\u00e7ade",
+    b:["Au-dessus de l\u2019entr\u00e9e, une tribune \u00e0 trois arcades port\u00e9es par deux colonnes \u00e0 chapiteau corinthien. Sur le mur du fond, une longue C\u00e8ne peinte, large de 7,20 m pour 2,25 m de haut : les deux colonnes passent devant elle et la d\u00e9coupent en trois.",
+       "La composition est frontale, \u00e0 la mani\u00e8re des c\u00e9nacles florentins du Quattrocento : une table unique parall\u00e8le au plan du tableau, nappe blanche tombant droit, sol \u00e0 grands carreaux rouges et blancs en perspective, paysage ouvert derri\u00e8re le Christ. Deux figures debout ferment la sc\u00e8ne aux extr\u00e9mit\u00e9s ; une cruche de terre rouge occupe l\u2019angle droit.",
+       "Ni l\u2019auteur ni la date ne sont donn\u00e9s par les sources publi\u00e9es sur l\u2019\u00e9glise, qui ne citent que la mosa\u00efque de l\u2019abside. La facture n\u00e9o-Renaissance s\u2019accorde avec la campagne de d\u00e9coration du d\u00e9but du XX\u1d49 si\u00e8cle."],
+    pics:[{f:"cene_ia", c:"Restitution en haute d\u00e9finition de la toile"}],
+    s:"Cotes relev\u00e9es sur photographie rapproch\u00e9e. Attribution et date non \u00e9tablies : aucune source consult\u00e9e ne mentionne cette peinture."},
+
+  nuit: {k:"Chapelles", t:"La Madone et le Sacr\u00e9-C\u0153ur",
+    b:["Les deux bas-c\u00f4t\u00e9s s\u2019ach\u00e8vent chacun sur une absidiole. Conque peinte en bleu de nuit sem\u00e9 d\u2019or sous un arc moulur\u00e9 \u00e0 quatre-feuilles, retable de marbre blanc \u00e0 arcature gothique encadrant une image, autel \u00e0 devant de marbre rouge sur deux degr\u00e9s.",
+       "Deux anges agenouill\u00e9s flanquent le retable de la chapelle de la Madone."],
+    pics:[{f:"chapelle", c:"La chapelle de la Madone \u2014 Wikimedia Commons, CC BY-SA"}],
+    s:"Relev\u00e9es sur les deux clich\u00e9s de chapelle ; les cotes sont d\u00e9duites."},
+
+  ocre: {k:"Narthex", t:"L\u2019atrium vo\u00fbt\u00e9",
+    b:["Le rez-de-chauss\u00e9e du corps sur rue forme l\u2019atrium de l\u2019\u00e9glise \u2014 le \u00ab vestibolo \u00bb des descriptions : neuf trav\u00e9es vo\u00fbt\u00e9es d\u2019ar\u00eates sur piles ocre \u00e0 socle et imposte de marbre sombre.",
+       "Le dallage de marbre blanc est ray\u00e9 de bandes vert-gris, avec un cadre par trav\u00e9e. Au-dessus, trois niveaux de logement releves sur les planches DoveVivo : 294 m\u00b2 par etage, sept chambres au premier, six au second."],
+    pics:[{f:"narthex", c:"Le vestibule vers la porte \u2014 Wikimedia Commons, CC BY-SA"}],
+    s:"Trois trav\u00e9es de front sont attest\u00e9es par la photographie ; la profondeur de trois trav\u00e9es est d\u00e9duite."}
+};
+NOTES.blasonb = {
+  k:"Alc\u00f4ve est", t:"Les armes du cardinal Collins",
+  b:["La plaque de droite, quand on regarde la fa\u00e7ade, n\u2019est pas celle du pape : ce sont les armes du cardinal-titulaire de l\u2019\u00e9glise.",
+     "Thomas Christopher Collins, archev\u00eaque de Toronto de 2007 \u00e0 2023, cr\u00e9\u00e9 cardinal par Beno\u00eet XVI en f\u00e9vrier 2012. Il a pris possession de San Patrizio comme titre cardinalice le 23 octobre 2012.",
+     "\u00c9cu de gueules \u00e0 la croix d\u2019or, cantonn\u00e9 de l\u2019alpha et de l\u2019om\u00e9ga, d\u2019un calice et d\u2019un livre ouvert ; chapeau de cardinal \u00e0 quinze houppes de chaque c\u00f4t\u00e9, croix archi\u00e9piscopale \u00e0 double traverse. Devise DEUM ADORA \u2014 \u00ab adore Dieu \u00bb, de l\u2019Apocalypse (22, 9)."],
+  pics:[{f:"blason_collins", pad:true, c:"Armes de Thomas Collins \u2014 trac\u00e9 h\u00e9raldique"}],
+  s:"Identifi\u00e9es d\u2019apr\u00e8s une photographie de la plaque en place, prise le 01.09.2026."
+};
+const shEl=document.getElementById("sheet"), shK=document.getElementById("sheetK"),
+      shT=document.getElementById("sheetT"), shB=document.getElementById("sheetB"),
+      shS=document.getElementById("sheetS"), shP=document.getElementById("sheetP");
+function closeSheet(){ shEl.hidden=true; }
+document.getElementById("sheetX").addEventListener("click",closeSheet);
+if(matchMedia("(max-width:720px)").matches) bInfo.click();   // replie sur mobile
+shEl.addEventListener("click",e=>{ if(e.target===shEl) closeSheet(); });
+addEventListener("keydown",e=>{ if(e.key==="Escape"){ closeSheet(); if(tourOn) stopTour(); } });
+
+let pickFB=null,pickTex=null,pickRB=null,pickW=0,pickH=0;
+function ensurePick(w,h){
+  if(pickW===w&&pickH===h) return;
+  if(pickFB){gl.deleteFramebuffer(pickFB);gl.deleteTexture(pickTex);gl.deleteRenderbuffer(pickRB);}
+  pickFB=gl.createFramebuffer(); pickTex=gl.createTexture(); pickRB=gl.createRenderbuffer();
+  gl.bindTexture(gl.TEXTURE_2D,pickTex);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+  gl.bindRenderbuffer(gl.RENDERBUFFER,pickRB);
+  gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT16,w,h);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,pickFB);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,pickTex,0);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,pickRB);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  pickW=w; pickH=h;
+}
+function pickAt(px,py){
+  const dpr=cv.width/cv.clientWidth;
+  const w=cv.width,h=cv.height;
+  ensurePick(w,h);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,pickFB);
+  gl.viewport(0,0,w,h);
+  gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(pMesh);
+  gl.uniform1f(gl.getUniformLocation(pMesh,"uPick"),1.0);
+  gl.uniformMatrix4fv(gl.getUniformLocation(pMesh,"uMVP"),false,new Float32Array(lastMVP));
+  gl.uniform1f(gl.getUniformLocation(pMesh,"uCut"),cutNow);
+  gl.uniform1f(gl.getUniformLocation(pMesh,"uCutY"),planNow);
+  gl.uniform1f(gl.getUniformLocation(pMesh,"uDoor"),doorNow);
+  gl.uniform1i(gl.getUniformLocation(pMesh,"uPorte"),MI.porte|0);
+  gl.uniform3fv(gl.getUniformLocation(pMesh,"uHinge"),new Float32Array(GEOM.hinge||[0,0,0]));
+  gl.bindVertexArray(vaoMesh);
+  gl.drawArrays(gl.TRIANGLES,0,GEOM.count);
+  gl.bindVertexArray(null);
+  const buf=new Uint8Array(4);
+  gl.readPixels(Math.round(px*dpr),Math.round((cv.clientHeight-py)*dpr),1,1,gl.RGBA,gl.UNSIGNED_BYTE,buf);
+  gl.uniform1f(gl.getUniformLocation(pMesh,"uPick"),0.0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  gl.viewport(0,0,cv.width,cv.height);
+  return buf[0]-1;
+}
+// Les notices sont indexees par NOM de materiau : l'index numerique change des
+// qu'un materiau s'insere dans la liste, et les notices partaient alors sur la
+// mauvaise piece.
+const BY_ID={};
+Object.keys(NOTES).forEach(k=>{ if(k in MI) BY_ID[MI[k]]=NOTES[k]; });
+const bWorks=document.getElementById("bWorks"), worksPanel=document.getElementById("worksPanel");
+function setWorks(open){
+  worksPanel.hidden=!open; bWorks.setAttribute("aria-expanded",open?"true":"false");
+  chrome();
+}
+WORKS.forEach(w=>{
+  const nt=NOTES[w.n]; if(!nt) return;
+  const b=document.createElement("button");
+  b.type="button"; b.className="works__i";
+  const pic=(nt.pics||[])[0];
+  if(pic && PICS[pic.f]){
+    const im=document.createElement("img");
+    im.src=PICS[pic.f]; im.alt=""; im.loading="lazy"; im.decoding="async";
+    b.append(im);
+  }else{ b.append(document.createElement("span")); }
+  const txt=document.createElement("div");
+  const k=document.createElement("span"); k.textContent=nt.k;
+  const t=document.createElement("b");    t.textContent=nt.t;
+  txt.append(k,t); b.append(txt);
+  b.addEventListener("click",()=>{ setWorks(false); flyTo(w.e,w.l); showNote(MI[w.n]); });
+  worksPanel.append(b);
+});
+bWorks.addEventListener("click",e=>{ e.stopPropagation(); setMenu(false); setWorks(worksPanel.hidden); });
+document.addEventListener("click",e=>{
+  if(!worksPanel.hidden && !worksPanel.contains(e.target)) setWorks(false);
+});
+function showNote(id){
+  const n=BY_ID[id];
+  if(!n){ closeSheet(); return false; }
+  shK.textContent=n.k; shT.textContent=n.t;
+  shP.replaceChildren();
+  (n.pics||[]).forEach(pic=>{
+    const src=PICS[pic.f]; if(!src) return;
+    const fig=document.createElement("figure");
+    if(pic.pad) fig.className="pad";
+    const im=document.createElement("img");
+    im.src=src; im.alt=pic.c||n.t; im.loading="lazy"; im.decoding="async";
+    const cap=document.createElement("figcaption"); cap.textContent=pic.c||"";
+    fig.append(im,cap); shP.append(fig);
+  });
+  shB.replaceChildren();
+  (Array.isArray(n.b)?n.b:[n.b]).forEach(t=>{
+    const el=document.createElement("p"); el.textContent=t; shB.append(el);
+  });
+  shS.textContent=n.s;
+  shEl.hidden=false; shEl.querySelector(".sheet__box").scrollTop=0;
+  return true;
+}
+
+/* ── partage ─────────────────────────────────────────────── */
+const toast=document.getElementById("toast");
+let toastT=0;
+function say(msg){
+  toast.textContent=msg; toast.classList.add("on");
+  clearTimeout(toastT); toastT=setTimeout(()=>toast.classList.remove("on"),2600);
+}
+document.getElementById("bShare").addEventListener("click",async()=>{
+  const url=location.href;
+  const data={title:"San Patrizio a Villa Ludovisi",
+              text:"Reconstruction 3D de l\u2019\u00e9glise San Patrizio, Via Boncompagni 31, Rome.",
+              url};
+  // Sur mobile la feuille de partage native propose WhatsApp directement.
+  if(navigator.share){
+    try{ await navigator.share(data); return; }
+    catch(err){ if(err && err.name==="AbortError") return; }
+  }
+  try{ await navigator.clipboard.writeText(url); say("Lien copi\u00e9"); }
+  catch{ say("Copiez le lien depuis la barre d\u2019adresse"); }
+});
+
+sync(); requestAnimationFrame(frame);
+</script>

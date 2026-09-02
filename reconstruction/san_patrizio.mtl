@@ -1,0 +1,416 @@
+newmtl mur
+Kd 0.760 0.460 0.310
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl enduitext
+Kd 0.800 0.420 0.280
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl brique
+Kd 0.780 0.500 0.360
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl pierre
+Kd 0.890 0.860 0.780
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl opaline
+Kd 0.970 0.950 0.900
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl tuile
+Kd 0.440 0.400 0.330
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl vitrage
+Kd 0.740 0.730 0.660
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl vitrail
+Kd 0.800 0.720 0.500
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl bois
+Kd 0.350 0.220 0.130
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl porte
+Kd 0.350 0.210 0.110
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl portemet
+Kd 0.300 0.200 0.140
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl metal
+Kd 0.170 0.110 0.080
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl pierrecl
+Kd 0.860 0.820 0.720
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl breche
+Kd 0.780 0.640 0.450
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl marbrecol
+Kd 0.550 0.590 0.630
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl enduitint
+Kd 0.930 0.900 0.820
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl caisson
+Kd 0.300 0.160 0.090
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl solint
+Kd 0.850 0.820 0.760
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl solmotif
+Kd 0.370 0.420 0.400
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl marbrevert
+Kd 0.240 0.280 0.240
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl nuit
+Kd 0.110 0.130 0.240
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl inscript
+Kd 0.320 0.260 0.120
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl dorure
+Kd 0.420 0.330 0.150
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl arcpeint
+Kd 0.620 0.500 0.340
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl arcsurr
+Kd 0.660 0.550 0.410
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl blason
+Kd 0.780 0.740 0.650
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl blasonb
+Kd 0.780 0.740 0.650
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl ocre
+Kd 0.840 0.720 0.500
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl ardoise
+Kd 0.440 0.460 0.450
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl solbande
+Kd 0.360 0.420 0.400
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl tableau
+Kd 0.500 0.360 0.260
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl mosabside
+Kd 0.620 0.480 0.200
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl mosfront
+Kd 0.550 0.420 0.200
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl mostymp
+Kd 0.550 0.420 0.200
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl sombre
+Kd 0.070 0.070 0.080
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl mosaique
+Kd 0.760 0.620 0.270
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl toitplat
+Kd 0.420 0.430 0.460
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl sol
+Kd 0.550 0.550 0.550
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl solcham
+Kd 0.860 0.850 0.810
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl solcuis
+Kd 0.820 0.540 0.450
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl solbain
+Kd 0.800 0.780 0.760
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl damiern
+Kd 0.110 0.110 0.130
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl damierb
+Kd 0.930 0.920 0.890
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl portebois
+Kd 0.790 0.540 0.310
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl laque
+Kd 0.950 0.940 0.930
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl plantrav
+Kd 0.230 0.230 0.240
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl inox
+Kd 0.730 0.740 0.760
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl assise
+Kd 0.140 0.140 0.160
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl tissu
+Kd 0.430 0.500 0.510
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl boisclair
+Kd 0.850 0.720 0.490
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl terrasse
+Kd 0.750 0.440 0.350
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+
+newmtl poche
+Kd 0.340 0.360 0.370
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+Ns 12
+d 1
+illum 2
+

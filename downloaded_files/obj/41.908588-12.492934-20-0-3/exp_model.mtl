@@ -1,0 +1,12 @@
+
+newmtl mtl_0_0
+Kd 1.000 1.000 1.000
+d 1.0
+illum 0
+map_Kd exp_0_0.jpg
+
+newmtl mtl_0_1
+Kd 1.000 1.000 1.000
+d 1.0
+illum 0
+map_Kd exp_0_1.jpg
