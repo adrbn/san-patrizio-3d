@@ -1971,7 +1971,10 @@ def lustre(px0, py0, px1, py1, z, hp, n=1):
     for k in range(n):
         cx = px0 + (px1 - px0) * (k + 0.5) / n
         cy = (py0 + py1) / 2
-        pbox(cx - 0.17, cy - 0.17, cx + 0.17, cy + 0.17,
+        # 60 cm de cote : une source large se resout en bien moins
+        # d'echantillons qu'un plafonnier de 34, et le grain des rendus
+        # d'interieur venait de la.
+        pbox(cx - 0.30, cy - 0.30, cx + 0.30, cy + 0.30,
              z + hp - 0.30, z + hp - 0.16, "opaline")
 
 
