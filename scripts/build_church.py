@@ -1013,7 +1013,11 @@ for pl, ou in ((X_NW, -1), (X_NE, +1)):
     # commencent les logements, qui tiennent toute la largeur du corps. Monte
     # jusqu'a l'egout, ce mur coupait en deux la cuisine, la chambre 6, la
     # salle d'etude et le couloir — le releve DoveVivo n'en montre aucun.
-    wall_panel("x", pl, ou, Y_F, Y_NARTH, 0, 5.70, [])   # = Z_NSLAB
+    # Le retour de l'avancee de facade, lui, reste plein de fond en comble :
+    # c'est la joue de brique du recoin, entre le nu du tiers central et celui
+    # des blocs lateraux, en retrait de 50 cm.
+    wall_panel("x", pl, ou, Y_F, Y_F + SETBACK, 0, Z_EAVE, [])
+    wall_panel("x", pl, ou, Y_F + SETBACK, Y_NARTH, 0, 5.70, [])   # = Z_NSLAB
     # Le long de la nef, en revanche, il n'y a pas de mur sous la claire-voie :
     # c'est l'arcade qui ouvre sur les bas-cotes. Le panneau part donc au-dessus
     # des arcs — ce que l'exterieur ne voit pas, les bas-cotes le masquant.
@@ -1061,8 +1065,12 @@ _LS = (_LX1 - _LX0) / _LN                             # 1,03 m d'entraxe
 BANDH = [(_LX0 + _LS * 0.5, 0.46, 7.15, 8.95),
          (XC, 1.55, 7.15, 8.60),                      # 4-5-6 d'un seul tenant
          (_LX1 - _LS * 0.5, 0.46, 7.15, 8.95)]
-box(X_NW, X_NE, BP, FP - 0.02, BAND_Z0, BAND_Z1, "pierrecl", skip=("-y",))
-wall_panel("y", BP, FO, X_NW, X_NE, BAND_Z0, BAND_Z1, BANDH, mat="pierrecl")
+# La bande de calcaire ne court pas d'un mur de nef a l'autre : elle encadre
+# l'arcature d'une marge de 35 cm. Menee jusqu'a X_NW et X_NE, elle debordait
+# de 2,60 m en pierre aveugle, en saillie de 80 cm sur les blocs lateraux.
+BAND_X0, BAND_X1 = _LX0 - 0.35, _LX1 + 0.35
+box(BAND_X0, BAND_X1, BP, FP - 0.02, BAND_Z0, BAND_Z1, "pierrecl", skip=("-y",))
+wall_panel("y", BP, FO, BAND_X0, BAND_X1, BAND_Z0, BAND_Z1, BANDH, mat="pierrecl")
 for _u, _hw, _zs, _zp in BANDH:
     recess("y", BP, FO, _u, _zs, _zp, _hw, depth=0.34, mat="vitrage", sill=False)
     _sub = [_u] if _hw < 1.0 else [_u - _LS, _u, _u + _LS]
@@ -1071,8 +1079,8 @@ for _u, _hw, _zs, _zp in BANDH:
 blind_arcade("y", BP, FO, _LX0, _LX1, 8.95, _LN, d=0.22)
 box(XC - 2.75, XC + 2.75, FP - 0.34, FP - 0.02, BAND_Z1, 11.05, "pierrecl")
 blason("y", FP - 0.34, FO, XC, 10.66, r=0.46, mat="pierrecl")   # ecu sculpte
-for _k in range(int((X_NE - X_NW) / 0.34)):           # cordon de besants
-    _bx = X_NW + 0.20 + _k * 0.34
+for _k in range(int((BAND_X1 - BAND_X0) / 0.34)):     # cordon de besants
+    _bx = BAND_X0 + 0.20 + _k * 0.34
     box(_bx - 0.11, _bx + 0.11, FP - 0.42, BP, BAND_Z1 - 0.28, BAND_Z1 - 0.08,
         "pierrecl")
 
