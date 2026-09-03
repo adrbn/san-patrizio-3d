@@ -1994,6 +1994,19 @@ def bains(px0, py0, px1, py1, z):
     pbox(cx - 0.45, cy - 0.45, cx + 0.45, cy - 0.41, z + 0.06, z + 1.95, "vitrage")
 
 
+def battant(hx, hy, lg, ep, z0, z1, ang, mat="portebois"):
+    """Vantail pivote autour de son gond, dans le plan du sol."""
+    ca, sa = math.cos(ang), math.sin(ang)
+    pts = [(hx + a * ca - b * sa, hy + a * sa + b * ca)
+           for a, b in ((0, 0), (lg, 0), (lg, ep), (0, ep))]
+    lo = [V(_mx(x), _my(y), z0) for x, y in pts]
+    hi = [V(_mx(x), _my(y), z1) for x, y in pts]
+    for k in range(4):
+        j = (k + 1) % 4
+        quad(mat, lo[k], lo[j], hi[j], hi[k])
+    quad(mat, hi[0], hi[1], hi[2], hi[3])
+
+
 def chaise(cx, cy, z, ori=0):
     pbox(cx - 0.22, cy - 0.22, cx + 0.22, cy + 0.22, z + 0.42, z + 0.46, "assise")
     for sx in (cx - 0.20, cx + 0.16):
@@ -2024,25 +2037,32 @@ def chambre_meubles(px0, py0, px1, py1, z, cote_fen="sud"):
     chaise(bx + 0.65, by - 0.45, z, 1)
 
 
-def salon_meubles(px0, py0, px1, py1, z):
-    """Le SPAZIO COMUNE tel qu'il est dessine sur le releve : deux canapes en
-    vis-a-vis, tables basses, grande table de reunion et chaises."""
-    cx = (px0 + px1) / 2
+def salon_meubles(px0, py0, px1, py2, z):
+    """Deux canapes en vis-a-vis autour d'une table basse, et le long du mur
+    est deux grandes tables blanches accolees par leur petit cote, entourees
+    de chaises sur leurs trois cotes libres."""
+    cx = (px0 + px1) / 2 - 1.6
     for dy, ori in ((py0 + 2.10, 0), (py0 + 4.30, 1)):
         pbox(cx - 1.15, dy, cx + 1.15, dy + 0.85, z, z + 0.40, "tissu")
         pbox(cx - 1.15, dy + (0.70 if ori else 0.0), cx + 1.15,
              dy + (0.85 if ori else 0.15), z + 0.40, z + 0.82, "tissu")
     pbox(cx - 0.60, py0 + 3.20, cx + 0.60, py0 + 3.90, z, z + 0.36, "boisclair")
-    tx = px0 + 2.30                                                    # table
-    pbox(tx - 0.55, py0 + 1.40, tx + 0.55, py0 + 4.20, z + 0.72, z + 0.76, "boisclair")
-    for sy in (py0 + 1.46, py0 + 4.10):
-        for sx in (tx - 0.50, tx + 0.44):
-            pbox(sx, sy, sx + 0.06, sy + 0.06, z, z + 0.72, "boisclair")
-    for k in range(3):
-        chaise(tx - 0.95, py0 + 1.90 + 0.90 * k, z, 0)
-        chaise(tx + 0.95, py0 + 1.90 + 0.90 * k, z, 1)
-    bx = px1 - 2.20                                                    # bibliotheque
-    pbox(bx, py0 + 1.20, bx + 0.42, py0 + 4.60, z, z + 1.90, "laque")
+
+    P, L, H = 0.95, 1.80, 0.75              # profondeur, longueur, hauteur
+    x1 = px1 - 0.12                          # plateaux colles au mur est
+    x0 = x1 - P
+    ymid = (py0 + py2) / 2
+    for k in (0, 1):
+        a = ymid - L + k * L
+        pbox(x0, a, x1, a + L, z + H - 0.04, z + H, "laque")
+        for sx, sy in ((x0 + 0.05, a + 0.05), (x1 - 0.11, a + 0.05),
+                       (x0 + 0.05, a + L - 0.11), (x1 - 0.11, a + L - 0.11)):
+            pbox(sx, sy, sx + 0.06, sy + 0.06, z, z + H - 0.04, "laque")
+    for k in range(5):                       # cote libre, face au mur
+        chaise(x0 - 0.36, ymid - L + 0.45 + k * 0.72, z, 1)
+    chaise(x0 + P / 2, ymid - L - 0.42, z, 0)      # bout nord
+    chaise(x0 + P / 2, ymid + L + 0.42, z, 1)      # bout sud
+
 
 
 def tunnel_x(x0, x1, v, z_sill, z_spring, hw, mat="enduitint", n=12):
@@ -2199,7 +2219,10 @@ def _portes(g, nx, ny, pieces):
                 note(g[j - 1][i], g[j2][i], i, j, j2, "h")
             j = j2
     best = {}
+    LARGE = {}
     for (a, b, axe, lo, hi), pos in cross.items():
+        if pieces[a]["n"].startswith("Salon") or pieces[b]["n"].startswith("Salon"):
+            LARGE[(min(a, b), max(a, b))] = True
         pos.sort(); runs = [[pos[0]]]
         for p in pos[1:]:
             (runs[-1] if p == runs[-1][-1] + 1 else runs.append([p]) or runs[-1]).append(p)
@@ -2209,8 +2232,9 @@ def _portes(g, nx, ny, pieces):
         if k in best and len(best[k][0]) >= len(run): continue
         best[k] = (run, axe, lo, hi)
     dr = [[False] * nx for _ in range(ny)]
-    for (run, axe, lo, hi) in best.values():
-        c = (run[0] + run[-1]) // 2; d = int(0.45 / STEP)
+    for kk, (run, axe, lo, hi) in best.items():
+        c = (run[0] + run[-1]) // 2
+        d = int((0.82 if kk in LARGE else 0.45) / STEP)
         for p in range(c - d, c + d + 1):
             for q in range(lo, hi):
                 if axe == "v" and 0 <= p < ny: dr[p][q] = True
@@ -2218,28 +2242,49 @@ def _portes(g, nx, ny, pieces):
     return dr
 
 
-def etage_plan(niv, z, hp):
+def etage_plan(niv, z, hp, zone=None):
+    """zone limite l'emprise batie : au troisieme, le logement n'occupe qu'un
+    ilot sous le rampant, et sans cette borne tout le reste du plancher — les
+    deux terrasses comprises — se remplissait de cloison pleine."""
     pieces = PLAN[str(niv)]
     g, nx, ny = _grille(pieces)
     dr = _portes(g, nx, ny, pieces)
-    plein = [[g[j][i] < 0 and not dr[j][i] for i in range(nx)] for j in range(ny)]
-    baie = [[g[j][i] < 0 and dr[j][i] for i in range(nx)] for j in range(ny)]
     X = lambda i: PX0 + i * STEP
     Y = lambda j: PY0 + j * STEP
+    def dedans(i, j):
+        if zone is None:
+            return True
+        return (zone[0] - 0.02 <= X(i) < zone[2] + 0.02
+                and zone[1] - 0.02 <= Y(j) < zone[3] + 0.02)
+    plein = [[g[j][i] < 0 and not dr[j][i] and dedans(i, j) for i in range(nx)]
+             for j in range(ny)]
+    baie = [[g[j][i] < 0 and dr[j][i] and dedans(i, j) for i in range(nx)]
+            for j in range(ny)]
     for i, j, i2, j2 in _pave(plein, nx, ny):
         pbox(X(i), Y(j), X(i2), Y(j2), z, z + hp, "enduitint")
         pbox(X(i) + 0.012, Y(j) + 0.012, X(i2) - 0.012, Y(j2) - 0.012,
              z + POCHE0, z + POCHE1, "poche")
     for i, j, i2, j2 in _pave(baie, nx, ny):
         pbox(X(i), Y(j), X(i2), Y(j2), z + 2.10, z + hp, "enduitint")   # linteau
-        if (i2 - i) < (j2 - j):        # vantail dans le plan du mur
-            pbox((X(i) + X(i2)) / 2 - 0.02, Y(j) + 0.02,
-                 (X(i) + X(i2)) / 2 + 0.02, Y(j2) - 0.02,
-                 z + 0.015, z + 2.05, "portebois")
-        else:
-            pbox(X(i) + 0.02, (Y(j) + Y(j2)) / 2 - 0.02,
-                 X(i2) - 0.02, (Y(j) + Y(j2)) / 2 + 0.02,
-                 z + 0.015, z + 2.05, "portebois")
+        zb, zh = z + 0.015, z + 2.05
+        if (i2 - i) < (j2 - j):                 # mur normal a x, baie selon py
+            xm = (X(i) + X(i2)) / 2
+            a, b = Y(j) + 0.02, Y(j2) - 0.02
+            if b - a > 1.20:                     # deux vantaux : celui du nord
+                m = (a + b) / 2                  # s'entrouvre
+                battant(xm - 0.02, m, m - a, 0.04, zb, zh, math.radians(-38))
+                pbox(xm - 0.02, m, xm + 0.02, b, zb, zh, "portebois")
+            else:
+                pbox(xm - 0.02, a, xm + 0.02, b, zb, zh, "portebois")
+        else:                                    # mur normal a y, baie selon px
+            ym = (Y(j) + Y(j2)) / 2
+            a, b = X(i) + 0.02, X(i2) - 0.02
+            if b - a > 1.20:
+                m = (a + b) / 2
+                battant(m, ym - 0.02, m - a, 0.04, zb, zh, math.radians(142))
+                pbox(m, ym - 0.02, b, ym + 0.02, zb, zh, "portebois")
+            else:
+                pbox(a, ym - 0.02, b, ym + 0.02, zb, zh, "portebois")
     return pieces
 
 
@@ -2304,7 +2349,7 @@ for _a, _b, _c, _d in ((VIDE[0], VIDE[1], VIDE[2], VIDE[1] + 0.07),
 plancher_troue(Z_TOITURE - 0.04, [SALON, CAGE], "solint")
 P3 = (7.60, 10.90, 17.85, 16.10)
 pbox(P3[0], P3[1], P3[2], P3[3], Z_ET3 - 0.22, Z_ET3, "solint", bottom=True)
-etage_plan(3, Z_ET3, PH3)
+etage_plan(3, Z_ET3, PH3, zone=P3)
 meubler(3, Z_ET3, PH3)
 piece_xy(3, "Comble de l'eglise", X_NW, _my(P3[1]), X_NE, Y_NARTH, Z_ET3)
 piece_xy(3, "Terrasse ouest", X_W, Y_F + SETBACK, X_NW, Y_NARTH, Z_ET3)
