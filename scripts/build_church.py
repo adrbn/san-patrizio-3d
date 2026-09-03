@@ -1009,8 +1009,11 @@ for pl, ou, HS in ((X_W, -1, AISLE_W_HOLES), (X_E, +1, AISLE_E_HOLES)):
     wall_panel("x", pl, ou, Y_NARTH, Y_B, 0, Z_AISLE_LOW,
                [h for h in HS if h[0] >= Y_NARTH])
 for pl, ou in ((X_NW, -1), (X_NE, +1)):
-    # Le narthex est clos : mur plein sur toute la hauteur.
-    wall_panel("x", pl, ou, Y_F, Y_NARTH, 0, Z_EAVE, [])
+    # Le narthex est clos, mais seulement jusqu'a son plancher haut : au-dessus
+    # commencent les logements, qui tiennent toute la largeur du corps. Monte
+    # jusqu'a l'egout, ce mur coupait en deux la cuisine, la chambre 6, la
+    # salle d'etude et le couloir — le releve DoveVivo n'en montre aucun.
+    wall_panel("x", pl, ou, Y_F, Y_NARTH, 0, 5.70, [])   # = Z_NSLAB
     # Le long de la nef, en revanche, il n'y a pas de mur sous la claire-voie :
     # c'est l'arcade qui ouvre sur les bas-cotes. Le panneau part donc au-dessus
     # des arcs — ce que l'exterieur ne voit pas, les bas-cotes le masquant.
