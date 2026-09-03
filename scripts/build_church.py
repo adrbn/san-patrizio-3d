@@ -2067,20 +2067,30 @@ def doublage(z, hp):
     # --- facade sur Via Boncompagni : baies du tiers central (loggia et
     #     trifora) et des deux blocs lateraux
     YD = _my(PY1)
-    fh = [h for h in FACADE + BANDH if dans(h)]
-    fh += [h for v in BLOCKS.values() for h in v if dans(h)]
-    wall_panel("y", YD, +1, X_W + 0.94, X_E - 0.98, z, z1, fh, mat="enduitint")
-    # L'ebrasement du doublage commence APRES celui du parement (0,18 a 0,34 m
-    # selon les baies) : sinon les deux se superposent et l'ecran papillote.
-    for uc, hw, zs, zp in fh:
+    # Les deux tiers de facade ne sont pas dans le meme plan : le tiers central
+    # est au nu de Y_F, les blocs lateraux en retrait de 50 cm. Un ebrasement
+    # unique, parti de Y_F + 0,42, ressortait donc de 8 cm en avant de leur
+    # brique, autour de chacune de leurs fenetres.
+    fh_c = [h for h in FACADE + BANDH if dans(h)]              # tiers central
+    fh_b = [h for v in BLOCKS.values() for h in v if dans(h)]  # blocs lateraux
+    wall_panel("y", YD, +1, X_W + 0.94, X_E - 0.98, z, z1, fh_c + fh_b,
+               mat="enduitint")
+    # Chaque ebrasement commence APRES celui du parement (0,18 a 0,34 m selon
+    # les baies), sinon les deux se superposent et l'ecran papillote.
+    for uc, hw, zs, zp in fh_c:
         tunnel_y(Y_F + 0.42, YD, uc, zs, zp, hw)
+    for uc, hw, zs, zp in fh_b:
+        tunnel_y(Y_F + SETBACK + 0.22, YD, uc, zs, zp, hw)
 
     # --- gouttereaux ouest et est
     for pl, ins, HS in ((X_W, X_W + 0.94, AISLE_W_HOLES),
                         (X_E, X_E - 0.98, AISLE_E_HOLES)):
         ou = +1 if pl == X_W else -1
-        hs = [h for h in HS if Y_F < h[0] < _my(PY0) and dans(h)]
-        wall_panel("x", ins, ou, Y_F, _my(PY0), z, z1, hs, mat="enduitint")
+        # Le doublage s'arrete au nu interieur de la facade, pas a Y_F : le
+        # tiers central est 50 cm en avant des blocs, et cette demi-longueur
+        # de trop ressortait de la facade a l'extremite de chaque flanc.
+        hs = [h for h in HS if _my(PY1) < h[0] < _my(PY0) and dans(h)]
+        wall_panel("x", ins, ou, _my(PY1), _my(PY0), z, z1, hs, mat="enduitint")
         for vc, hw, zs, zp in hs:
             a = pl + (0.26 if pl < 0 else -0.26)
             tunnel_x(min(a, ins), max(a, ins), vc, zs, zp, hw)

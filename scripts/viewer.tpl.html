@@ -2143,6 +2143,10 @@ addEventListener("keydown",e=>{ if(e.key==="Escape"){ closeSheet(); if(tourOn) s
 
 let pickFB=null,pickTex=null,pickRB=null,pickW=0,pickH=0;
 function ensurePick(w,h){
+  // Unite dediee : liee sur celle que lit un echantillonneur (uOcc etait sur
+  // la 8), la cible de selection formait une boucle de retroaction et le
+  // tirage echouait en INVALID_OPERATION — plus aucun clic ne repondait.
+  gl.activeTexture(gl.TEXTURE15);
   if(pickW===w&&pickH===h) return;
   if(pickFB){gl.deleteFramebuffer(pickFB);gl.deleteTexture(pickTex);gl.deleteRenderbuffer(pickRB);}
   pickFB=gl.createFramebuffer(); pickTex=gl.createTexture(); pickRB=gl.createRenderbuffer();
