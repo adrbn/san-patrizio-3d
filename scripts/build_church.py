@@ -2085,7 +2085,11 @@ def doublage(z, hp):
     z1 = z + hp
 
     def dans(h):
-        return z + 0.10 < h[2] and h[3] + h[1] < z1 - 0.10
+        # On exige seulement que l'allege soit dans l'etage : les arcades de
+        # la loggia montent a 10,15 m, plus haut que le plafond du premier, et
+        # se trouvaient donc rejetees — les chambres du tiers central
+        # restaient aveugles. wall_panel recoupe l'arc a la hauteur utile.
+        return z + 0.10 < h[2] < z1 - 0.60
 
     # --- facade sur Via Boncompagni : baies du tiers central (loggia et
     #     trifora) et des deux blocs lateraux
