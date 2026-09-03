@@ -1069,7 +1069,9 @@ BANDH = [(_LX0 + _LS * 0.5, 0.46, 7.15, 8.95),
 # l'arcature d'une marge de 35 cm. Menee jusqu'a X_NW et X_NE, elle debordait
 # de 2,60 m en pierre aveugle, en saillie de 80 cm sur les blocs lateraux.
 BAND_X0, BAND_X1 = _LX0 - 0.35, _LX1 + 0.35
-box(BAND_X0, BAND_X1, BP, FP - 0.02, BAND_Z0, BAND_Z1, "pierrecl", skip=("-y",))
+# Sa joue interieure refermait les arches : le jour s'arretait la.
+box(BAND_X0, BAND_X1, BP, FP - 0.02, BAND_Z0, BAND_Z1, "pierrecl",
+    skip=("-y", "+y"))
 wall_panel("y", BP, FO, BAND_X0, BAND_X1, BAND_Z0, BAND_Z1, BANDH, mat="pierrecl")
 for _u, _hw, _zs, _zp in BANDH:
     recess("y", BP, FO, _u, _zs, _zp, _hw, depth=0.34, mat="vitrage", sill=False)
@@ -1077,6 +1079,10 @@ for _u, _hw, _zs, _zp in BANDH:
     for _su in _sub:
         glazing("y", BP, FO, _su, _zs + 0.12, _zp + 0.42, _LS * 0.42, 0.34, nh=3)
 blind_arcade("y", BP, FO, _LX0, _LX1, 8.95, _LN, d=0.22)
+# La loggia n'etait qu'une arcature plaquee : derriere son vitrage, le mur de
+# brique restait plein et les chambres du tiers central n'avaient aucun jour.
+# On perce la facade des memes baies.
+FACADE.extend(BANDH)
 box(XC - 2.75, XC + 2.75, FP - 0.34, FP - 0.02, BAND_Z1, 11.05, "pierrecl")
 blason("y", FP - 0.34, FO, XC, 10.66, r=0.46, mat="pierrecl")   # ecu sculpte
 for _k in range(int((BAND_X1 - BAND_X0) / 0.34)):     # cordon de besants
