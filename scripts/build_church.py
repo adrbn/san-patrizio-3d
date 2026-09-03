@@ -234,10 +234,13 @@ def cornice(x0, x1, y0, y1, z, h=0.5, proj=0.45, mat="pierre", roof=True,
     skip permet d'omettre un cote : un bandeau qui bute exactement sur un mur
     voisin y pose une face coplanaire, donc du z-fighting.
     """
-    if "front" not in skip: box(x0 - proj, x1 + proj, y0 - proj, y0, z, z + h, mat)
-    if "back"  not in skip: box(x0 - proj, x1 + proj, y1, y1 + proj, z, z + h, mat)
-    if "left"  not in skip: box(x0 - proj, x0, y0, y1, z, z + h, mat)
-    if "right" not in skip: box(x1, x1 + proj, y0, y1, z, z + h, mat)
+    # Chaque bandeau mord d'un centimetre dans le mur qu'il longe : pose a son
+    # nu exact, il lui opposait une face coplanaire.
+    q = 0.01
+    if "front" not in skip: box(x0 - proj, x1 + proj, y0 - proj, y0 + q, z, z + h, mat)
+    if "back"  not in skip: box(x0 - proj, x1 + proj, y1 - q, y1 + proj, z, z + h, mat)
+    if "left"  not in skip: box(x0 - proj, x0 + q, y0, y1, z, z + h, mat)
+    if "right" not in skip: box(x1 - q, x1 + proj, y0, y1, z, z + h, mat)
     if roof:
         i = 0.06                       # leger retrait : evite le z-fighting
         a = V(x0 + i, y0 + i, z + h * 0.42); b = V(x1 - i, y0 + i, z + h * 0.42)
@@ -1141,7 +1144,7 @@ opening("y", FP, FO, XC, NB_TOP - NB_H, NB_TOP - NB_HW, NB_HW,
 celtic_cross(XC, FP - 0.20, PED_APEX + 0.30, 3.15)
 # 6g. blocs conventuels : legerement en retrait, corniche propre
 for (xa, xb) in ((X_W, X_NW), (X_NE, X_E)):
-    box(xa, xb, FP + SETBACK - 0.45, FP + SETBACK,
+    box(xa, xb, FP + SETBACK - 0.45, FP + SETBACK + 0.01,
         Z_AISLE_HIGH - 0.55, Z_AISLE_HIGH, "pierre")
     for lvl in (2.10, 6.90, 11.00):
         for k in range(2):
@@ -1275,7 +1278,7 @@ for _k in range(int((_AY1 - _AY0) / _pas)):
 # --- doublage interieur : sans lui on voit la brique des murs porteurs ----
 for xa, xb, _pl, _ou, _hs in ((X_W + 0.58, X_W + 0.63, X_W + 0.63, +1, AISLE_W_HOLES),
                               (X_E - 0.63, X_E - 0.58, X_E - 0.63, -1, AISLE_E_HOLES)):
-    box(xa, xb, I_Y0, I_Y1, I_FLOOR, Z_AISLE_CEIL, "enduitint",
+    box(xa, xb, I_Y0, I_Y1 - 0.02, I_FLOOR, Z_AISLE_CEIL, "enduitint",
         skip=("+x" if _ou > 0 else "-x",))
     _h = [h for h in _hs if I_Y0 < h[0] < I_Y1]
     wall_panel("x", _pl, _ou, I_Y0, I_Y1, I_FLOOR, Z_AISLE_CEIL, _h, mat="enduitint")
@@ -1300,8 +1303,10 @@ Z_ARCTOP = Z_SPRING + (BAY - 1.10) / 2 + 0.55
 for side in (-1, 1):
     ax = AX_W if side < 0 else AX_E
     _inn = ax + (0.32 if side < 0 else -0.32)
-    box(ax - 0.32, ax + 0.32, I_Y0, I_Y1, Z_ARCTOP, Z_CEIL + 0.42, "enduitint",
-        skip=("+x" if side < 0 else "-x",))
+    # 2 cm sous le dessus des caissons et en retrait des deux pignons : arase
+    # a leur nu, ce doublage leur opposait une face coplanaire.
+    box(ax - 0.32, ax + 0.32, I_Y0 + 0.02, I_Y1 - 0.02, Z_ARCTOP, Z_CEIL + 0.40,
+        "enduitint", skip=("+x" if side < 0 else "-x",))
     wall_panel("x", _inn, -side, I_Y0, I_Y1, Z_ARCTOP, Z_CEIL + 0.42,
                NAVE_HOLES[side], mat="enduitint")
     for _yc, _hw, _zs, _zp in NAVE_HOLES[side]:       # ebrasement vu de la nef
@@ -1321,8 +1326,8 @@ for side in (-1, 1):
             # Les dosserets d'extremite doivent mourir DANS le mur : centres
             # sur lui, ils ressortaient de 55 cm et faisaient deux grands
             # rectangles blancs entre l'abside et les absidioles.
-            _dy0 = cy if k == 0 else cy - 1.10
-            _dy1 = cy + 1.10 if k == 0 else cy
+            _dy0 = cy + 0.02 if k == 0 else cy - 1.10
+            _dy1 = cy + 1.10 if k == 0 else cy - 0.02
             box(cx - 0.62, cx + 0.62, _dy0, _dy1, I_FLOOR, Z_CAP, "enduitint")
         elif k % 2 == 1:
             colonne(cx, cy)
@@ -1371,7 +1376,8 @@ box(AX_W - 0.1, AX_E + 0.1, I_Y0, I_Y1, Z_CEIL + 0.30, Z_CEIL + 0.42, "caisson")
 
 # --- plafonds des bas-cotes ----------------------------------------------
 for (xa, xb) in ((X_W + 0.60, AX_W - 0.62), (AX_E + 0.62, X_E - 0.60)):
-    box(xa, xb, I_Y0, I_Y1, Z_AISLE_CEIL, Z_AISLE_CEIL + 0.10, "enduitint", top=False)
+    box(xa, xb, I_Y0, I_Y1 - 0.02, Z_AISLE_CEIL, Z_AISLE_CEIL + 0.10, "enduitint",
+        top=False)
 
 # --- abside : revetement de marbre vert, bandeau, conque mosaiquee --------
 _a0, _a1 = math.radians(180), math.radians(0)
@@ -1792,13 +1798,15 @@ def plancher_troue(z, trous, mat="solint"):
             continue
         ym = (ya + yb) / 2
         spans = sorted((t[0], t[2]) for t in trous if t[1] <= ym <= t[3])
-        cur = 0.0
+        # La dalle penetre de 6 cm dans les gouttereaux : arasee a leur nu,
+        # sa tranche etait coplanaire avec eux et l'ecran papillotait.
+        cur = 0.06
         for a, b in spans:
             if a > cur:
                 pbox(cur, ya, a, yb, z - DALLE, z, mat, bottom=True)
             cur = max(cur, b)
-        if cur < 25.44:
-            pbox(cur, ya, 25.44, yb, z - DALLE, z, mat, bottom=True)
+        if cur < 25.38:
+            pbox(cur, ya, 25.38, yb, z - DALLE, z, mat, bottom=True)
 
 
 # ------------------------------------------------------------------ refends

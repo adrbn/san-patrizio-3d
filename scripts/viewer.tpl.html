@@ -983,7 +983,10 @@ function rndStart(){
   rndOn=true; sync();
 }
 function rndStop(){
-  rndOn=false; document.getElementById("rnd").hidden=true; sync();
+  rndOn=false; document.getElementById("rnd").hidden=true;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  gl.viewport(0,0,cv.width,cv.height);
+  sync();
 }
 function rndShow(){
   gl.bindFramebuffer(gl.FRAMEBUFFER,fbOut);
@@ -991,6 +994,9 @@ function rndShow(){
   quadPass(texAcc, RND_MAX/Math.max(1,rndI), 0.0, 1.0, 1.0);
   gl.readPixels(0,0,rndW,rndH,gl.RGBA,gl.UNSIGNED_BYTE,rndPix);
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  // Sans cette remise en place, la fenetre laissait le cadrage du rendu et la
+  // maquette se redessinait dans un coin.
+  gl.viewport(0,0,cv.width,cv.height);
   rndCtx.putImageData(new ImageData(rndPix, rndW, rndH), 0, 0);
   document.getElementById("rndN").textContent =
     rndI + " / " + RND_MAX + " passes" + (rndI>=RND_MAX ? " — terminé" : "");
