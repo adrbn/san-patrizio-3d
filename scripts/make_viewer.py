@@ -123,12 +123,31 @@ def hinge_of(mi):
     return [round(min(xs), 4), round(max(xs), 4), round(sum(zs) / len(zs), 4)]
 
 import base64 as _b64
+from io import BytesIO
+
+
+def _img64(path, jpeg=False, q=84, cap=1800):
+    """Les restitutions photographiques pesaient 8 Mo en PNG dans le fichier.
+    En JPEG, a taille utile, elles en font moins de deux — a l'oeil nu, sur un
+    panneau de 7 m, la difference ne se voit pas. Les blasons restent en PNG :
+    ils ont besoin de leur couche alpha."""
+    if not path:
+        return ""
+    if not jpeg:
+        return _b64.b64encode(open(path, "rb").read()).decode()
+    from PIL import Image
+    im = Image.open(path).convert("RGB")
+    if max(im.size) > cap:
+        r = cap / max(im.size)
+        im = im.resize((round(im.width * r), round(im.height * r)), Image.LANCZOS)
+    b = BytesIO(); im.save(b, "JPEG", quality=q, optimize=True, progressive=True)
+    return _b64.b64encode(b.getvalue()).decode()
 # texture rangee dans le projet : le repertoire temporaire est purge
 TEXPATH = os.environ.get("MOSAIC_TEX",
     os.path.join(os.path.dirname(os.path.abspath(__file__)),
                  "..", "assets", "mosaique_fronton.png"))
 TEXPATH = TEXPATH if os.path.exists(TEXPATH) else ""
-tex_b64 = _b64.b64encode(open(TEXPATH, "rb").read()).decode() if TEXPATH else ""
+tex_b64 = _img64(TEXPATH, jpeg=True)
 # Ces deux-la n'avaient pas de chemin par defaut : elles ne s'embarquaient que
 # si le build etait lance avec APSE_TEX= et TYMP_TEX=, et disparaissaient
 # silencieusement sinon. La conque et le tympan se peignaient alors a plat.
@@ -166,19 +185,19 @@ out = {
     "mosB": MATS.index("blason"), "mosB2": MATS.index("blasonb"),
     "bbB": [round(v, 4) for v in bbox_of(MATS.index("blason"))],
     "bbB2": [round(v, 4) for v in bbox_of(MATS.index("blasonb"))],
-    "texB": _b64.b64encode(open(TEXB, "rb").read()).decode() if TEXB else "",
-    "texB2": _b64.b64encode(open(TEXB2, "rb").read()).decode() if TEXB2 else "",
+    "texB": _img64(TEXB, jpeg=False),
+    "texB2": _img64(TEXB2, jpeg=False),
     "mosI": MATS.index("inscript"),
     "bbI": [round(v, 4) for v in bbox_of(MATS.index("inscript"))],
-    "texI": _b64.b64encode(open(TEXI, "rb").read()).decode() if TEXI else "",
+    "texI": _img64(TEXI, jpeg=False),
     "mosD": MATS.index("arcpeint"),
     "bbD": [round(v, 4) for v in bbox_of(MATS.index("arcpeint"))],
-    "texD": _b64.b64encode(open(TEXD, "rb").read()).decode() if TEXD else "",
+    "texD": _img64(TEXD, jpeg=True),
     "mosP": MATS.index("tableau"),
     "bbP": [round(v, 4) for v in bbox_of(MATS.index("tableau"))],
-    "texP": _b64.b64encode(open(TEXP, "rb").read()).decode() if TEXP else "", "bbA": [round(v, 4) for v in bbox_of(MOSA)],
-    "texA": _b64.b64encode(open(TEXA, "rb").read()).decode() if TEXA else "",
-    "texT": _b64.b64encode(open(TEXT, "rb").read()).decode() if TEXT else "",
+    "texP": _img64(TEXP, jpeg=True), "bbA": [round(v, 4) for v in bbox_of(MOSA)],
+    "texA": _img64(TEXA, jpeg=True),
+    "texT": _img64(TEXT, jpeg=True),
     "tex": tex_b64,
     "scale": SCALE,
     "bbox": [round(v, 3) for v in bbox],
