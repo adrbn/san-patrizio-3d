@@ -2107,133 +2107,195 @@ def poche_enveloppe(z):
     poche(PX0, PY1 + 0.06, PX1, PY1 + 1.20, z)           # facade sur rue
 
 
-# =========================================================== PREMIER ETAGE
-# Rang sud : sept travees contigues (WC1, 6A, 5A, 4A, 3A, 2A, 1A). Les joints
-# sont releves un a un : deux refends porteurs de 0,60 m, quatre cloisons.
-JOINTS1 = [(3.93, 0.12), (7.09, 0.60), (10.81, 0.10),
-           (14.63, 0.10), (18.35, 0.60), (21.81, 0.12)]
-NOMS1 = ["WC1", "6A", "5A", "4A", "3A", "2A", "1A"]
-JOINTS2 = [(7.09, 0.60), (10.81, 0.10), (14.63, 0.10), (18.35, 0.60)]
-NOMS2 = ["5A", "4A", "3A", "2A", "1A"]
-
-SALON = (7.60, PY_NORD, 17.85, PY_SPINE - 0.20)     # SPAZIO COMUNE
-VIDE = (9.00, 4.10, 16.45, 8.60)                    # colonne d'air du second
-CAGE = (19.86, 6.87, 24.46, PY_SPINE - 0.20)        # cage d'escalier, a l'est
+# =========================================== ETAGES, PILOTES PAR LE PLAN
+# Le plan est la source. On ne trace plus les refends a la main : on rasterise
+# les pieces, et tout ce qui reste a l'interieur du gros oeuvre EST du mur.
+# Les portes s'ouvrent la ou une piece touche une circulation. Corriger le
+# plan dans plan/plan.html et recoller l'export ici suffit a tout regenerer.
+import json as _json
+PLAN = _json.load(open(os.path.dirname(os.path.abspath(__file__))
+                       + "/../plan/plan_corrige.json"))["niveaux"]
+STEP = 0.05
+CIRC = ("couloir", "palier", "sas", "balcon", "degagement", "escalier")
 
 
-def travees(joints, z, hp, nomsud, niv, sol="solcham"):
-    """Le rang sud : un mur par joint, une porte par piece sur le couloir."""
-    bornes = [PX0]
-    for c, e in joints:
-        bornes += [c - e / 2, c + e / 2]
-    bornes.append(PX1)
-    for c, e in joints:
-        refend(PY_COUL + 0.07, PY1, c, e, z, z + hp, "x", vantail=False)
-    return [(bornes[2 * k], bornes[2 * k + 1], nomsud[k])
-            for k in range(len(nomsud))]
+def _circ(p):
+    n = p["n"].lower()
+    return p["k"] in ("couloir", "escalier") or any(c in n for c in CIRC)
 
 
-def etage_commun(z, hp, niv):
-    """Ce qui est identique au premier et au second : mitoyen, couloir, cage,
-    bande nord ouest, cloisons de la cage."""
-    refend(0.06, 25.38, PY_MIT, 0.91, z, z + hp, "y", vantail=False,
-           mat="enduitint")
-    # Le mur de couloir n'est PAS trace ici : chaque etage a ses propres portes,
-    # et un mur plein pose avant elles les rebouchait toutes.
-    refend(PX0, 7.19, PY_SPINE, 0.40, z, z + hp, "y", portes=[(6.00, 0.95)])
-    refend(17.85, PX1, PY_SPINE, 0.40, z, z + hp, "y", portes=[(19.20, 0.95)])
-    refend(PX0, PY_SPINE, 7.19, 0.81, z, z + hp, "x", portes=[(8.60, 1.05)])
-    refend(PY_NORD, PY_SPINE, 18.25, 0.80, z, z + hp, "x", portes=[(8.60, 1.05)])
-    refend(PX0, 7.19, 6.87, 0.62, z, z + hp, "y", portes=[(5.90, 0.90)])
-    refend(18.25, PX1, 6.87, 0.62, z, z + hp, "y", portes=[(23.10, 1.00)])
-    refend(6.87, PY_SPINE, 5.15, 0.16, z, z + hp, "x", portes=[(8.40, 0.90)])
-    refend(6.87, PY_SPINE, 19.86, 0.20, z, z + hp, "x", vantail=False)
+def _rects(p):
+    return [(q["x"], q["y"] + 2.08, q["w"], q["h"]) for q in p["parts"]]
 
 
-# ---- premier etage : plancher, cloisons, pieces
+def _boite(p):
+    r = _rects(p)
+    return (min(x for x, y, w, h in r), min(y for x, y, w, h in r),
+            max(x + w for x, y, w, h in r), max(y + h for x, y, w, h in r))
+
+
+def _grille(pieces):
+    nx = int(round((PX1 - PX0) / STEP)); ny = int(round((PY1 - PY0) / STEP))
+    g = [[-1] * nx for _ in range(ny)]
+    for k, p in enumerate(pieces):
+        for x, y, w, h in _rects(p):
+            i0 = max(0, int(round((x - PX0) / STEP)))
+            i1 = min(nx, int(round((x + w - PX0) / STEP)))
+            j0 = max(0, int(round((y - PY0) / STEP)))
+            j1 = min(ny, int(round((y + h - PY0) / STEP)))
+            for j in range(j0, j1):
+                row = g[j]
+                for i in range(i0, i1):
+                    row[i] = k
+    return g, nx, ny
+
+
+def _pave(mask, nx, ny):
+    """Decoupe un masque en rectangles maximaux : un mur mince donne quelques
+    boites, pas une par cellule."""
+    m = [row[:] for row in mask]; out = []
+    for j in range(ny):
+        i = 0
+        while i < nx:
+            if not m[j][i]:
+                i += 1; continue
+            i2 = i
+            while i2 < nx and m[j][i2]:
+                i2 += 1
+            j2 = j + 1
+            while j2 < ny and all(m[j2][k] for k in range(i, i2)):
+                j2 += 1
+            for jj in range(j, j2):
+                for kk in range(i, i2):
+                    m[jj][kk] = False
+            out.append((i, j, i2, j2)); i = i2
+    return out
+
+
+def _portes(g, nx, ny, pieces):
+    """Traversees possibles : une piece, un peu de mur, une autre piece. On
+    n'en garde qu'une par couple, et seulement vers une circulation."""
+    cross = {}
+    def note(a, b, pos, lo, hi, axe):
+        if a == b or a < 0 or b < 0: return
+        if not (_circ(pieces[a]) or _circ(pieces[b])): return
+        cross.setdefault((min(a, b), max(a, b), axe, lo, hi), []).append(pos)
+    for j in range(ny):
+        i = 0
+        while i < nx:
+            if g[j][i] >= 0: i += 1; continue
+            i2 = i
+            while i2 < nx and g[j][i2] < 0: i2 += 1
+            if i > 0 and i2 < nx and (i2 - i) * STEP <= 1.10:
+                note(g[j][i - 1], g[j][i2], j, i, i2, "v")
+            i = i2
+    for i in range(nx):
+        j = 0
+        while j < ny:
+            if g[j][i] >= 0: j += 1; continue
+            j2 = j
+            while j2 < ny and g[j2][i] < 0: j2 += 1
+            if j > 0 and j2 < ny and (j2 - j) * STEP <= 1.10:
+                note(g[j - 1][i], g[j2][i], i, j, j2, "h")
+            j = j2
+    best = {}
+    for (a, b, axe, lo, hi), pos in cross.items():
+        pos.sort(); runs = [[pos[0]]]
+        for p in pos[1:]:
+            (runs[-1] if p == runs[-1][-1] + 1 else runs.append([p]) or runs[-1]).append(p)
+        run = max(runs, key=len)
+        if len(run) * STEP < 1.00: continue
+        k = (a, b)
+        if k in best and len(best[k][0]) >= len(run): continue
+        best[k] = (run, axe, lo, hi)
+    dr = [[False] * nx for _ in range(ny)]
+    for (run, axe, lo, hi) in best.values():
+        c = (run[0] + run[-1]) // 2; d = int(0.45 / STEP)
+        for p in range(c - d, c + d + 1):
+            for q in range(lo, hi):
+                if axe == "v" and 0 <= p < ny: dr[p][q] = True
+                if axe == "h" and 0 <= p < nx: dr[q][p] = True
+    return dr
+
+
+def etage_plan(niv, z, hp):
+    pieces = PLAN[str(niv)]
+    g, nx, ny = _grille(pieces)
+    dr = _portes(g, nx, ny, pieces)
+    plein = [[g[j][i] < 0 and not dr[j][i] for i in range(nx)] for j in range(ny)]
+    baie = [[g[j][i] < 0 and dr[j][i] for i in range(nx)] for j in range(ny)]
+    X = lambda i: PX0 + i * STEP
+    Y = lambda j: PY0 + j * STEP
+    for i, j, i2, j2 in _pave(plein, nx, ny):
+        pbox(X(i), Y(j), X(i2), Y(j2), z, z + hp, "enduitint")
+        pbox(X(i) + 0.012, Y(j) + 0.012, X(i2) - 0.012, Y(j2) - 0.012,
+             z + POCHE0, z + POCHE1, "poche")
+    for i, j, i2, j2 in _pave(baie, nx, ny):
+        pbox(X(i), Y(j), X(i2), Y(j2), z + 2.10, z + hp, "enduitint")   # linteau
+        if (i2 - i) < (j2 - j):        # vantail dans le plan du mur
+            pbox((X(i) + X(i2)) / 2 - 0.02, Y(j) + 0.02,
+                 (X(i) + X(i2)) / 2 + 0.02, Y(j2) - 0.02,
+                 z + 0.015, z + 2.05, "portebois")
+        else:
+            pbox(X(i) + 0.02, (Y(j) + Y(j2)) / 2 - 0.02,
+                 X(i2) - 0.02, (Y(j) + Y(j2)) / 2 + 0.02,
+                 z + 0.015, z + 2.05, "portebois")
+    return pieces
+
+
+SOLS = {"chambre": "solcham", "sanitaire": "solbain", "cuisine": "solcuis",
+        "couloir": "solcham", "living": "solcham", "autre": "solcham"}
+
+
+def meubler(niv, z, hp):
+    for p in PLAN[str(niv)]:
+        a, b, c, d = _boite(p)
+        aire = sum(w * h for _x, _y, w, h in _rects(p))
+        PIECES.append({"l": niv, "n": p["n"], "x0": _mx(a), "x1": _mx(c),
+                       "y0": _my(d), "y1": _my(b), "z": z, "a": round(aire, 1)})
+        if p["k"] in ("escalier", "vide"):
+            continue
+        for x, y, w, h in _rects(p):
+            pbox(x, y, x + w, y + h, z, z + 0.015, SOLS.get(p["k"], "solcham"))
+        lustre(a, b, c, d, z, hp, n=max(1, int((c - a) / 4.6)))
+        if p["k"] == "chambre":
+            chambre_meubles(a, b, c, d, z)
+        elif p["k"] == "cuisine":
+            cuisine(a, b, c, d, z, ori=1 if niv == 3 else 0)
+        elif p["k"] == "sanitaire":
+            bains(a, b, c, d, z)
+        elif p["n"].startswith("Salon"):
+            damier(a, b, c, d, z)
+            salon_meubles(a, b, c, d, z)
+
+
+def _piece_de(niv, nom):
+    for p in PLAN[str(niv)]:
+        if p["n"] == nom:
+            return _boite(p)
+    raise KeyError(nom)
+
+
+CAGE = _piece_de(1, "Escalier")
+SALON = _piece_de(1, "Salon commun")
+VIDE = _piece_de(2, "Vide sur salon")
+
 plancher_troue(Z_ET1, [CAGE], "solint")
 poche_enveloppe(Z_ET1)
 doublage(Z_ET1, PH1)
-etage_commun(Z_ET1, PH1, 1)
-_r1 = travees(JOINTS1, Z_ET1, PH1, NOMS1, 1)
-# Le second cabinet du premier occupe l'extremite ouest du couloir : la porte
-# de WC1 se decale donc vers l'est pour ne pas deboucher dedans.
-_portes1 = [((a + b) / 2, 0.90) for a, b, _n in _r1]
-_portes1[0] = (3.20, 0.90)
-refend(PX0, PX1, PY_COUL, 0.14, Z_ET1, Z_ET1 + PH1, "y", portes=_portes1)
-refend(PY_SPINE + 0.20, PY_COUL - 0.07, 2.20, 0.12, Z_ET1, Z_ET1 + PH1, "x",
-       portes=[(11.05, 0.70)])
-for _a, _b, _n in _r1:
-    _sol = "solbain" if _n.startswith("WC") else "solcham"
-    piece(1, _n, _a, PY_COUL + 0.07, _b, PY1, Z_ET1, _sol)
-    if _n.startswith("WC"):
-        bains(_a, PY_COUL + 0.07, _b, PY1, Z_ET1)
-    else:
-        chambre_meubles(_a, PY_COUL + 0.07, _b, PY1, Z_ET1)
-piece(1, "WC2", PX0, PY_SPINE + 0.20, 2.20, PY_COUL - 0.07, Z_ET1, "solbain",
-      hp=PH1)
-piece(1, "Couloir", 2.20, PY_SPINE + 0.20, PX1, PY_COUL - 0.07, Z_ET1,
-      "solcham", hp=PH1)
-piece(1, "Cuisine", PX0, PY_NORD, 6.79, 6.56, Z_ET1, "solcuis", hp=PH1)
-cuisine(PX0, PY_NORD, 6.79, 6.56, Z_ET1)
-piece(1, "7A", PX0, 7.18, 5.07, 9.98, Z_ET1, "solcham", hp=PH1)
-chambre_meubles(PX0, 7.18, 5.07, 9.98, Z_ET1, "nord")
-piece(1, "Degagement", 5.23, 6.87, 6.79, PY_SPINE - 0.20, Z_ET1, "solcham", hp=PH1)
-piece(1, "Salon commun", *SALON, Z_ET1, hp=PH1)
-damier(SALON[0], SALON[1], SALON[2], SALON[3], Z_ET1)
-salon_meubles(*SALON, Z_ET1)
-piece(1, "Salle d'etude", 18.65, PY_NORD, PX1, 6.56, Z_ET1, "solcham", hp=PH1)
-piece(1, "Escalier", *CAGE, Z_ET1, hp=PH1)
+etage_plan(1, Z_ET1, PH1)
+meubler(1, Z_ET1, PH1)
 
-# =========================================================== SECOND ETAGE
-# Six chambres seulement : les deux travees d'extremite laissent la place a
-# quatre cabinets de toilette, et le salon devient une colonne d'air.
-plancher_troue(Z_ET2, [SALON, CAGE], "solint")
+plancher_troue(Z_ET2, [VIDE, CAGE], "solint")
 poche_enveloppe(Z_ET2)
 doublage(Z_ET2, PH2)
-etage_commun(Z_ET2, PH2, 2)
-_r2 = travees(JOINTS2, Z_ET2, PH2, NOMS2, 2)
-_WC2 = [(0.94, 2.95, "WC4"), (3.05, 5.65, "WC3"),
-        (20.30, 22.40, "WC2"), (22.50, 24.46, "WC1")]
-refend(PX0, PX1, PY_COUL, 0.14, Z_ET2, Z_ET2 + PH2, "y",
-       portes=[(8.90, 0.90), (12.70, 0.90), (16.40, 0.90),
-               (3.80, 0.90), (21.60, 0.90)])
-refend(PX0, 6.79, 12.53, 0.14, Z_ET2, Z_ET2 + PH2, "y",
-       portes=[(1.95, 0.75), (4.35, 0.75)])
-refend(18.65, PX1, 12.53, 0.14, Z_ET2, Z_ET2 + PH2, "y",
-       portes=[(21.35, 0.75), (23.50, 0.75)])
-refend(PY_COUL + 0.07, 12.53, 3.00, 0.10, Z_ET2, Z_ET2 + PH2, "x", vantail=False)
-refend(PY_COUL + 0.07, 12.53, 22.45, 0.10, Z_ET2, Z_ET2 + PH2, "x", vantail=False)
-for _a, _b, _n in _WC2:
-    piece(2, _n, _a, PY_COUL + 0.07, _b, 12.53, Z_ET2, "solbain", hp=PH2)
-    bains(_a, PY_COUL + 0.07, _b, 12.53, Z_ET2)
-for _a, _b, _n in _r2:
-    _y0 = 12.60 if _n in ("5A", "1A") else PY_COUL + 0.07
-    piece(2, _n, _a, _y0, _b, PY1, Z_ET2, "solcham", hp=PH2)
-    chambre_meubles(_a, _y0, _b, PY1, Z_ET2)
-piece(2, "Couloir", PX0, PY_SPINE + 0.20, PX1, PY_COUL - 0.07, Z_ET2, "solcham", hp=PH2)
-piece(2, "Cuisine", PX0, PY_NORD, 6.79, 6.56, Z_ET2, "solcuis", hp=PH2)
-cuisine(PX0, PY_NORD, 6.79, 6.56, Z_ET2)
-piece(2, "6A", PX0, 7.18, 5.07, 9.98, Z_ET2, "solcham", hp=PH2)
-chambre_meubles(PX0, 7.18, 5.07, 9.98, Z_ET2, "nord")
-piece(2, "Degagement", 5.23, 6.87, 6.79, PY_SPINE - 0.20, Z_ET2, "solcham", hp=PH2)
-piece(2, "Salle cinema", 18.65, PY_NORD, PX1, 6.56, Z_ET2, "solcham", hp=PH2)
-piece(2, "Escalier", *CAGE, Z_ET2, hp=PH2)
-piece_xy(2, "Vide sur salon", _mx(VIDE[0]), _my(VIDE[3]),
-         _mx(VIDE[2]), _my(VIDE[1]), Z_ET2)
-# galeries autour du vide
-for _a, _b, _c, _d in ((SALON[0], SALON[1], SALON[2], VIDE[1]),
-                       (SALON[0], VIDE[3], SALON[2], SALON[3]),
-                       (SALON[0], VIDE[1], VIDE[0], VIDE[3]),
-                       (VIDE[2], VIDE[1], SALON[2], VIDE[3])):
-    pbox(_a, _b, _c, _d, Z_ET2 - DALLE, Z_ET2, "solint", bottom=True)
-    pbox(_a, _b, _c, _d, Z_ET2, Z_ET2 + 0.015, "solcham")
+etage_plan(2, Z_ET2, PH2)
+meubler(2, Z_ET2, PH2)
 for _a, _b, _c, _d in ((VIDE[0], VIDE[1], VIDE[2], VIDE[1] + 0.07),
                        (VIDE[0], VIDE[3] - 0.07, VIDE[2], VIDE[3]),
                        (VIDE[0], VIDE[1], VIDE[0] + 0.07, VIDE[3]),
                        (VIDE[2] - 0.07, VIDE[1], VIDE[2], VIDE[3])):
-    pbox(_a, _b, _c, _d, Z_ET2, Z_ET2 + 1.02, "pierrecl")
-
+    pbox(_a, _b, _c, _d, Z_ET2, Z_ET2 + 1.02, "pierrecl")   # garde-corps du vide
 # ===================================================== TROISIEME ETAGE
 # Sous le rampant de la nef, derriere le pignon de facade : deux chambres,
 # une cuisine, deux cabinets et deux degagements. De part et d'autre, les
@@ -2242,30 +2304,8 @@ for _a, _b, _c, _d in ((VIDE[0], VIDE[1], VIDE[2], VIDE[1] + 0.07),
 plancher_troue(Z_TOITURE - 0.04, [SALON, CAGE], "solint")
 P3 = (7.60, 10.90, 17.85, 16.10)
 pbox(P3[0], P3[1], P3[2], P3[3], Z_ET3 - 0.22, Z_ET3, "solint", bottom=True)
-for _f, _e, _ax in ((P3[1], 0.30, "y"), (P3[0], 0.30, "x"), (P3[2], 0.30, "x")):
-    if _ax == "y":
-        refend(P3[0], P3[2], _f, _e, Z_ET3, Z_ET3 + PH3, "y",
-               portes=[(12.70, 1.00)])
-    else:
-        refend(P3[1], P3[3], _f, _e, Z_ET3, Z_ET3 + PH3, "x", vantail=False)
-refend(P3[1], P3[3], 11.30, 0.14, Z_ET3, Z_ET3 + PH3, "x", portes=[(13.20, 0.85)])
-refend(P3[1], P3[3], 14.55, 0.14, Z_ET3, Z_ET3 + PH3, "x", portes=[(13.20, 0.85)])
-refend(P3[0], 11.30, 14.60, 0.14, Z_ET3, Z_ET3 + PH3, "y", portes=[(10.30, 0.75)])
-refend(14.55, P3[2], 14.60, 0.14, Z_ET3, Z_ET3 + PH3, "y", portes=[(15.20, 0.75)])
-refend(14.60, P3[3], 9.30, 0.10, Z_ET3, Z_ET3 + PH3, "x", vantail=False)
-refend(14.60, P3[3], 16.30, 0.10, Z_ET3, Z_ET3 + PH3, "x", vantail=False)
-piece(3, "2A", P3[0], 11.30, 11.30, 14.60, Z_ET3, "solcham", hp=PH3)
-chambre_meubles(P3[0], 11.30, 11.30, 14.60, Z_ET3)
-piece(3, "1A", 14.55, 11.30, P3[2], 14.60, Z_ET3, "solcham", hp=PH3)
-chambre_meubles(14.55, 11.30, P3[2], 14.60, Z_ET3)
-piece(3, "Cuisine", 11.30, 11.30, 14.55, P3[3], Z_ET3, "solcuis", hp=PH3)
-cuisine(11.30, 11.30, 14.55, P3[3], Z_ET3, ori=1)
-piece(3, "WC2", P3[0], 14.60, 9.30, P3[3], Z_ET3, "solbain", hp=PH3)
-bains(P3[0], 14.60, 9.30, P3[3], Z_ET3)
-piece(3, "Degagement 2", 9.30, 14.60, 11.30, P3[3], Z_ET3, "solcham", hp=PH3)
-piece(3, "Degagement 1", 14.55, 14.60, 16.30, P3[3], Z_ET3, "solcham", hp=PH3)
-piece(3, "WC1", 16.30, 14.60, P3[2], P3[3], Z_ET3, "solbain", hp=PH3)
-bains(16.30, 14.60, P3[2], P3[3], Z_ET3)
+etage_plan(3, Z_ET3, PH3)
+meubler(3, Z_ET3, PH3)
 piece_xy(3, "Comble de l'eglise", X_NW, _my(P3[1]), X_NE, Y_NARTH, Z_ET3)
 piece_xy(3, "Terrasse ouest", X_W, Y_F + SETBACK, X_NW, Y_NARTH, Z_ET3)
 piece_xy(3, "Terrasse est", X_NE, Y_F + SETBACK, X_E, Y_NARTH, Z_ET3)

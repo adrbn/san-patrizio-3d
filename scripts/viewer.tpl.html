@@ -456,6 +456,15 @@ body.panel-open .hint{opacity:0}
 .fiche__b button[type=submit]{background:var(--accent); color:#FFF;
   border-color:var(--accent); font-weight:500}
 .fiche__b button:hover{border-color:var(--ink-3)}
+.lamps{width:min(300px,calc(100vw - 28px))}
+.lamps h3{font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--ink-3); margin:13px 0 5px; font-weight:500}
+.lamps__r{display:flex; align-items:center; gap:9px; padding:2px 0}
+.lamps__r span{flex:0 0 92px; font-size:12px}
+.lamps__r input{flex:1; accent-color:var(--accent)}
+.lamps__b{display:flex; gap:7px; margin:2px 0 4px}
+.lamps__b button{font:inherit; font-size:11.5px; padding:5px 10px; cursor:pointer;
+  border:1px solid var(--rule); background:var(--paper); color:var(--ink-2)}
 /* Zones cliquables du plan : elles se superposent aux pieces. */
 #plan .hit{position:absolute; transform:none; background:none; padding:0;
   pointer-events:auto; cursor:pointer; border:1px solid transparent}
@@ -481,6 +490,14 @@ body.panel-open .hint{opacity:0}
       <canvas id="rndC"></canvas>
     </div>
   </div>
+
+  <section class="fiche lamps" id="lamps" hidden aria-label="Lampes">
+    <button type="button" class="fiche__x" id="lampX" aria-label="Fermer">×</button>
+    <p class="eyebrow">Lampes des pièces</p>
+    <div class="lamps__b"><button type="button" id="lampAll">Tout allumer</button>
+      <button type="button" id="lampNone">Tout éteindre</button></div>
+    <div id="lampL"></div>
+  </section>
 
   <section class="fiche" id="fiche" hidden aria-labelledby="ficheT">
     <button type="button" class="fiche__x" id="ficheX" aria-label="Fermer">×</button>
@@ -548,6 +565,7 @@ body.panel-open .hint{opacity:0}
       <button type="button" id="bGrid" aria-pressed="false">Cotes relevées</button>
       <button type="button" id="bClay" aria-pressed="false">Rendu argile</button>
       <button type="button" id="bSpin" aria-pressed="false">Rotation lente</button>
+      <button type="button" id="bLamp" aria-expanded="false">Lampes des pièces</button>
       <button type="button" id="bOcc" aria-pressed="true"
         title="Les chambres habitées s\u2019allument, les autres restent dans la pénombre">Éclairer l\u2019occupation</button>
       <button type="button" id="bShare">Partager le lien</button>
@@ -587,6 +605,8 @@ body.panel-open .hint{opacity:0}
         <button type="button" data-view="ouest">Flanc</button>
         <button type="button" data-view="abside">Abside</button>
         <button type="button" data-view="axo">Axono</button>
+        <button type="button" id="bIso" aria-pressed="false"
+          title="Projection isométrique : pas de fuite, les longueurs se mesurent">Isométrique</button>
       </div>
       <span class="bar__sep" aria-hidden="true"></span>
       <div class="bar__acts">
@@ -1124,6 +1144,7 @@ let cutOn=false, cutT=0, CUT_A=BB[0]-2.0, CUT_B=-1.0, cutNow=CUT_A;
 // niveau demande ; par defaut il passe juste sous le plafond a caissons, ce
 // qui decouvre la nef. La reglette permet de descendre plus bas pour voir
 // les bas-cotes, puis les voutes du narthex.
+let isoOn=false;
 let planOn=false, orthoOn=false, planT=0, PLAN_A=BB[4]+2.0, planLevel=16.0, planNow=PLAN_A;
 // Niveaux du corps de logis, releves sur les planches DoveVivo (piano primo,
 // secondo, terzo). La coupe passe a 1,25 m au-dessus du sol : hauteur d'appui,
@@ -1203,9 +1224,14 @@ const occNow = i => occAll(i).some(occEnCours);
 function occSave(){
   try { localStorage.setItem(OCC_KEY, JSON.stringify(OCC)); } catch(e){}
 }
+const LAMP = {};                 // reglage manuel, 0 a 1, par piece
 function occRefresh(){
   occData.fill(0);
-  PIECES.forEach((p, i) => { if(p.l >= 1 && occNow(i)) occData[(i + 1) * 4] = 255; });
+  PIECES.forEach((p, i) => {
+    if(p.l < 1) return;
+    const v = (i in LAMP) ? LAMP[i] : (occNow(i) ? 1 : 0);
+    occData[(i + 1) * 4] = Math.round(v * 255);
+  });
   occUpload(); sync();
 }
 const NIV = ["Rez-de-chaussée", "1ᵉʳ étage", "2ᵉ étage", "3ᵉ étage"];
@@ -1259,6 +1285,42 @@ function showRoom(i){
     L.append(li);
   });
 }
+/* ── lampes : un curseur par piece ────────────────────────── */
+const lampsEl = document.getElementById("lamps"), lampL = document.getElementById("lampL");
+const NIVN = ["Rez", "1ᵉʳ étage", "2ᵉ étage", "3ᵉ étage"];
+let lampsBuilt = false;
+function lampsBuild(){
+  if(lampsBuilt) return; lampsBuilt = true;
+  for(let l = 1; l <= 3; l++){
+    const ids = PIECES.map((p, i) => [p, i]).filter(([p]) => p.l === l);
+    if(!ids.length) continue;
+    const h = document.createElement("h3"); h.textContent = NIVN[l]; lampL.append(h);
+    for(const [p, i] of ids){
+      const r = document.createElement("div"); r.className = "lamps__r";
+      const s2 = document.createElement("span"); s2.textContent = p.n;
+      const inp = document.createElement("input");
+      inp.type = "range"; inp.min = 0; inp.max = 100; inp.step = 5;
+      inp.value = Math.round(((i in LAMP) ? LAMP[i] : (occNow(i) ? 1 : 0)) * 100);
+      inp.addEventListener("input", () => { LAMP[i] = +inp.value / 100; occRefresh(); });
+      r.append(s2, inp); lampL.append(r); r.dataset.i = i;
+    }
+  }
+}
+function lampsSet(v){
+  lampsBuild();
+  lampL.querySelectorAll("input").forEach(inp => {
+    inp.value = v * 100; LAMP[+inp.parentNode.dataset.i] = v;
+  });
+  occRefresh();
+}
+document.getElementById("bLamp").addEventListener("click", e => {
+  e.stopPropagation(); setMenu(false); lampsBuild();
+  lampsEl.hidden = !lampsEl.hidden; fiche.hidden = true;
+});
+document.getElementById("lampX").addEventListener("click", () => lampsEl.hidden = true);
+document.getElementById("lampAll").addEventListener("click", () => lampsSet(1));
+document.getElementById("lampNone").addEventListener("click", () => lampsSet(0));
+
 document.getElementById("ficheX").addEventListener("click", () => {
   fiche.hidden = true; ficheI = -1;
 });
@@ -1607,6 +1669,12 @@ bMore.addEventListener("click",e=>{ e.stopPropagation(); setMenu(moreMenu.hidden
 moreMenu.addEventListener("click",()=>setMenu(false));
 document.addEventListener("click",e=>{ if(!moreMenu.hidden && !moreMenu.contains(e.target)) setMenu(false); });
 bInside.addEventListener("click",()=>{insideOn=!insideOn; applyInside();});
+const bIso = document.getElementById("bIso");
+bIso.addEventListener("click",()=>{
+  isoOn=!isoOn; bIso.setAttribute("aria-pressed",isoOn?"true":"false");
+  if(isoOn){ az=-45; el=35.264; spin=false; }
+  sync();
+});
 const bOcc = document.getElementById("bOcc");
 bOcc.addEventListener("click",()=>{
   occOn = !occOn;
@@ -1844,7 +1912,14 @@ function frame(now){
     if(Math.abs(eye[0]) < 13.2 && Math.abs(eye[2]) < 29.0)
       eye[1] = Math.max(eye[1], FLOOR_Y + 0.60);       // dans l'emprise batie
     eye[1] = Math.max(eye[1], 0.30);                   // et jamais sous le terrain
-    if(orthoOn){
+    if(isoOn && !orthoOn){
+      // Isometrie : projection parallele sur une direction oblique. Les
+      // longueurs parallèles aux axes se mesurent directement.
+      dist=fitDist()*zoom; eye=camPos();
+      const hz=RADIUS*zoom*1.05, hx=hz*((W/H)||1);
+      P=M4.ortho(-hx,hx,-hz,hz, 1, dist+RADIUS*3.5);
+      V=M4.look(eye,target,[0,1,0]);
+    }else if(orthoOn){
       // On cadre l'emprise a lire, puis on l'etend sur l'axe le plus large :
       // le plan garde ainsi son echelle quel que soit le format de l'ecran.
       // En portrait, le plan pivote d'un quart de tour : un corps deux fois plus
