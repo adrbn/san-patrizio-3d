@@ -974,21 +974,19 @@ for (plane, out) in ((X_W, -1), (X_E, +1)):
         archivolt("x", plane, out, yc, 2.40, 5.20, 0.58, w=0.22, d=0.24)
     blind_arcade("x", plane, out, Y_NARTH, Y_B, Z_AISLE_LOW - 0.9, 20)
     blind_arcade("x", plane, out, Y_F + SETBACK, Y_NARTH, Z_AISLE_HIGH - 0.9, 11)
-    # Quatre travees par flanc et par niveau. Elles n'etaient pas placees sur
-    # les pieces : reparties regulierement sur les 16,27 m du corps, l'une
-    # tombait dans l'epaisseur du mur mitoyen et la cuisine restait aveugle.
-    # On les cale desormais sur le releve DoveVivo :
-    #   4,95 — axe de la cuisine a l'ouest, de la salle d'etude a l'est
-    #   7,85 — angle nord de la chambre 7 et de la cage d'escalier
-    #  11,05 — le couloir, et le second cabinet a l'ouest
-    #  13,71 — axe des chambres sur rue
+    # Trois travees par flanc et par niveau, aux memes cotes a l'ouest et a
+    # l'est, aux deux etages : mesurees sur les plans DoveVivo (ouvertures de
+    # 1,04 m) et confirmees par les photos des pieces.
+    #   5,00 — axe de la cuisine a l'ouest, de la salle d'etude a l'est
+    #   9,32 — angle cote rue de la chambre 7 et de la cage d'escalier
+    #  13,65 — WC1 a l'ouest, chambre 1A a l'est
     for lvl in (2.10, 6.90, 11.00):
-        for py_bay in (4.95, 7.85, 11.05, 13.71):
+        for py_bay in (5.00, 9.32, 13.65):
             yc = Y_NARTH - py_bay
-            HOLES.append((yc, 0.58, lvl, lvl + 1.35))
-            recess("x", plane, out, yc, lvl, lvl + 1.35, 0.58, depth=0.18)
-            glazing("x", plane, out, yc, lvl + 0.10, lvl + 1.88, 0.58, 0.18, nh=1)
-            archivolt("x", plane, out, yc, lvl, lvl + 1.35, 0.58, w=0.20, d=0.20)
+            HOLES.append((yc, 0.52, lvl, lvl + 1.35))
+            recess("x", plane, out, yc, lvl, lvl + 1.35, 0.52, depth=0.18)
+            glazing("x", plane, out, yc, lvl + 0.10, lvl + 1.88, 0.52, 0.18, nh=1)
+            archivolt("x", plane, out, yc, lvl, lvl + 1.35, 0.52, w=0.20, d=0.20)
 
 # --- 5. Claire-voie de la nef : une large baie a deux jours par travee
 NAVE_HOLES = {-1: [], +1: []}
