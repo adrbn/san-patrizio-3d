@@ -1001,20 +1001,68 @@ const CLAY=new Float32Array(toLin("#D8D1C4"));
 
 /* ── etat camera ─────────────────────────────────────────── */
 /* ── etat camera ─────────────────────────────────────────── */
+// Points de vue : seulement une direction. La distance et le point vise sont
+// calcules a l'ouverture (fitView), pour que le batiment tienne, centre,
+// dans l'espace laisse libre par l'interface, quel que soit l'ecran.
 const VIEWS={
-  facade:{az:90, el:8,  d:0.62},
-  ouest:{ az:180,el:10, d:0.90},
-  abside:{az:-90,el:14, d:0.64},
-  axo:{   az:125,el:26, d:0.72}
+  facade:{az:90,  el:7},
+  ouest:{ az:180, el:12},
+  abside:{az:-90, el:14},
+  axo:{   az:121, el:23},
+  iso:{   az:135, el:35.264}
 };
 const FOV=38*Math.PI/180;
+// Focale plus longue autour de la maquette : moins de fuite, un bati qui se
+// lit comme une perspective d'architecte et non comme un grand-angle.
+const ORB_FOV=28*Math.PI/180;
 const RADIUS=0.5*Math.hypot(SPANX,SPANY,SPANZ);
 // La sphere englobante doit tenir dans le plus etroit des deux champs : en
 // portrait c'est l'horizontal qui contraint, d'ou le recalcul a chaque resize.
 function fitDist(){
-  const a=(W/H)||1, fy=FOV/2, fx=Math.atan(Math.tan(fy)*a);
-  return RADIUS/Math.sin(Math.min(fy,fx)) * lensK.x;
+  const a=(W/H)||1, fy=ORB_FOV/2, fx=Math.atan(Math.tan(fy)*a);
+  return RADIUS/Math.sin(Math.min(fy,fx));
 }
+// Cadrage calcule : on projette un echantillon des sommets reels du modele
+// (hors sol) et l'on cherche la distance et le point vise qui les font tenir,
+// centres, entre le cartouche et le dock, avec une marge. Une boite
+// englobante ne suffit pas : ses coins portent la croix a 24,75 m sur toute
+// la longueur du batiment, et la maquette se retrouvait minuscule.
+const CORNERS=[];
+for(let i=0, st=3*Math.max(1, Math.floor(positions.length/3/2500)); i<positions.length; i+=st)
+  if(positions[i+1]>0.40) CORNERS.push([positions[i], positions[i+1], positions[i+2]]);
+let insetTop=0, insetBot=0;
+function fitView(az0, el0, iso=false){
+  const a=az0*Math.PI/180, e=el0*Math.PI/180;
+  const back=[Math.cos(e)*Math.cos(a), Math.sin(e), Math.cos(e)*Math.sin(a)];
+  const f=back.map(v=>-v), r=norm(cross(f,[0,1,0])), u=cross(r,f);
+  const Hs=cv.clientHeight||H||1, Ws=cv.clientWidth||W||1, asp=Ws/Hs;
+  const free=(insetBot>insetTop+40) ? (insetBot-insetTop) : Hs*0.8;
+  const avY=free/Hs*2*0.88, avX=2*0.90;
+  const ty=Math.tan(ORB_FOV/2), tx=ty*asp;
+  let t=[...TARGET], d=fitDist()*0.8, hz=RADIUS;
+  for(let it=0; it<(iso?3:40); it++){
+    const eye=t.map((v,i)=>v+back[i]*d);
+    let x0=1e9, x1=-1e9, y0=1e9, y1=-1e9, zs=0;
+    for(const c of CORNERS){
+      const q=sub(c,eye), z=dot(q,f), X=dot(q,r), Y=dot(q,u);
+      const px=iso ? X : X/(z*tx), py=iso ? Y : Y/(z*ty);
+      x0=Math.min(x0,px); x1=Math.max(x1,px); y0=Math.min(y0,py); y1=Math.max(y1,py); zs+=z;
+    }
+    const cx=(x0+x1)/2, cy=(y0+y1)/2, zm=zs/CORNERS.length;
+    if(iso){
+      t=t.map((v,i)=>v+r[i]*cx+u[i]*cy);
+      hz=Math.max((y1-y0)/avY, (x1-x0)/(avX*asp));
+      continue;
+    }
+    t=t.map((v,i)=>v+r[i]*cx*zm*tx+u[i]*cy*zm*ty);
+    const k=Math.max((x1-x0)/avX, (y1-y0)/avY);
+    d=Math.max(5, d+zm*(k-1)*0.8);
+  }
+  const zoom = iso ? hz/(RADIUS*1.05) : d/fitDist();
+  return {az:az0, el:el0, zoom, target:t};
+}
+const homeView=()=>{ const v=VIEWS[VIEW_SEL && VIEWS[VIEW_SEL] ? VIEW_SEL : "axo"];
+  return fitView(v.az, v.el, VIEW_SEL==="iso"); };
 const reduce = matchMedia("(prefers-reduced-motion:reduce)").matches;
 let spin=false, clay=0, showGrid=false, dist=0;
 let lastMVP=null;
@@ -1631,8 +1679,8 @@ function applyInside(){
     if(was) camTo({zoom:1.14, target:t}, 0.5); else camSet({zoom:1.14, target:t});
     return;
   }
-  if(was) camSet({zoom:0.72, target:TARGET});
-  if(cutOn) camTo({az:168, el:10, zoom:0.52, target:TARGET}, 0.75);   // flanc ouest : le
+  if(was) camSet(homeView());
+  if(cutOn) camTo(fitView(168, 10), 0.75);   // flanc ouest : le
   if(planOn){ planLevel=+planZ.value; if(cam.el.g<34) camTo({el:54}, 0.7); }  // seul cote ouvert
 }
 function setMode(m){
@@ -1663,8 +1711,9 @@ function goto(k){
   setMode("maquette");
   const wasIso=isoOn;
   VIEW_SEL=k; spin=false;
-  if(k==="iso"){ isoOn=true; camTo({az:-45, el:35.264, zoom:0.72, target:TARGET}, 0.6); }
-  else { isoOn=false; const v=VIEWS[k]; camTo({az:v.az, el:v.el, zoom:v.d, target:TARGET}, 0.75); }
+  isoOn = k==="iso";
+  const v=VIEWS[k];
+  camTo(fitView(v.az, v.el, isoOn), isoOn!==wasIso ? 0.5 : 0.75);
   if(isoOn!==wasIso) veil();
   sync();
 }
@@ -2303,11 +2352,17 @@ function measureInsets(){
   const top=Math.max($("bInfo").getBoundingClientRect().bottom, $("bMore").getBoundingClientRect().bottom);
   let bot=document.querySelector(".bar").getBoundingClientRect().top;
   if(!ctxEl.hidden){ const r=ctxEl.getBoundingClientRect(); if(r.height) bot=Math.min(bot, r.top); }
-  const cy=(top+bot)/2;
+  const cy=(top+bot)/2, y0=cv.getBoundingClientRect().top;
+  insetTop=top-y0; insetBot=bot-y0;
   lens.to(2*(H0/2-cy)/H0);
-  // Et si l'espace libre est bas, on recule un peu pour que tout y tienne.
+  // Le plan, lui, recule un peu si l'espace libre est bas.
   lensK.to(Math.max(1, 0.93*H0/Math.max(1, bot-top)));
-  if(!measureInsets.done){ lens.jump(lens.g); lensK.jump(lensK.g); measureInsets.done=true; }
+  if(!measureInsets.done){
+    lens.jump(lens.g); lensK.jump(lensK.g); measureInsets.done=true;
+    camSet(homeView());                          // vue d'arrivee
+  }else if(MODE==="maquette" && VIEW_SEL && !ptrs.size){
+    camTo(homeView(), 0.45);                     // l'ecran change : on recadre
+  }
 }
 new ResizeObserver(measureInsets).observe(document.querySelector(".dock"));
 new ResizeObserver(measureInsets).observe(document.getElementById("stage"));
@@ -2447,9 +2502,9 @@ function frame(now){
     if(isoOn && !orthoOn){
       // Isometrie : projection parallele sur une direction oblique. Les
       // longueurs parallèles aux axes se mesurent directement.
-      dist=fitDist()*zoom; eye=camPos();
-      const hz=RADIUS*zoom*1.05*lensK.x, hx=hz*((W/H)||1);
-      P=M4.ortho(-hx,hx,-hz,hz, 1, dist+RADIUS*3.5);
+      dist=RADIUS*3; eye=camPos();
+      const hz=RADIUS*zoom*1.05, hx=hz*((W/H)||1);
+      P=M4.ortho(-hx,hx,-hz,hz, 1, RADIUS*6);
       V=M4.look(eye,target,[0,1,0]);
     }else if(orthoOn){
       // On cadre l'emprise a lire, puis on l'etend sur l'axe le plus large :
@@ -2468,7 +2523,7 @@ function frame(now){
                   deb ? [1, 0, 0] : [0, 0, -1]);     // l'est, ou l'abside, en haut
     }else{
       const near=Math.max(0.35, dist-RADIUS*1.7), far=dist+RADIUS*2.4;
-      P=M4.persp(FOV, W/H||1, near, far);
+      P=M4.persp(ORB_FOV, W/H||1, near, far);
       V=M4.look(eye,target,[0,1,0]);
     }
   }
