@@ -995,7 +995,7 @@ const RADIUS=0.5*Math.hypot(SPANX,SPANY,SPANZ);
 // portrait c'est l'horizontal qui contraint, d'ou le recalcul a chaque resize.
 function fitDist(){
   const a=(W/H)||1, fy=FOV/2, fx=Math.atan(Math.tan(fy)*a);
-  return RADIUS/Math.sin(Math.min(fy,fx));
+  return RADIUS/Math.sin(Math.min(fy,fx)) * lensK.x;
 }
 const reduce = matchMedia("(prefers-reduced-motion:reduce)").matches;
 let spin=false, clay=0, showGrid=false, dist=0;
@@ -2172,10 +2172,26 @@ joy.addEventListener("pointerup", joyEnd); joy.addEventListener("pointercancel",
 $("bRnd").addEventListener("click", ()=>{ if(!rndOn) rndStart(); });
 $("rndX").addEventListener("click", rndStop);
 $("rnd").addEventListener("click", e=>{ if(e.target.id==="rnd") rndStop(); });
+// Enregistrer : dans claude.ai, la page ne telecharge pas elle-meme — elle
+// confie l'image a la capacite « downloads », qui demande confirmation au
+// visiteur. Hors de claude.ai, un lien de telechargement ordinaire suffit.
 $("rndSave").addEventListener("click", ()=>{
-  $("rndC").toBlob(b=>{
+  $("rndC").toBlob(async b=>{
+    if(!b){ say("Image indisponible"); return; }
+    const name="san-patrizio-rendu.png";
+    if(window.claude && typeof claude.use==="function"){
+      const dl=await claude.use("downloads");
+      if(!dl){ say("Téléchargement indisponible ici"); return; }
+      try{ await dl.save({filename:name, data:b}); say("Rendu enregistré"); }
+      catch(err){
+        const c=err && err.code;
+        if(c==="declined") return;
+        say(c==="rate_limited" ? "Une demande est déjà ouverte" : "Téléchargement indisponible ici");
+      }
+      return;
+    }
     const u=URL.createObjectURL(b), a=document.createElement("a");
-    a.href=u; a.download="san-patrizio-rendu.png"; a.click();
+    a.href=u; a.download=name; a.click();
     setTimeout(()=>URL.revokeObjectURL(u), 4000);
   }, "image/png");
 });
@@ -2224,6 +2240,7 @@ function sync(){
       ctxEl.animate([{opacity:0, transform:"scale(.96) translateY(4px)"},{opacity:1, transform:"none"}],
                     {duration:300, easing:"cubic-bezier(.2,.9,.25,1)"});
     ctxShown=MODE;
+    requestAnimationFrame(measureInsets);
   }
   radio(segViews, b=>b.dataset.view===VIEW_SEL);
   radio(segCut, b=>b.dataset.cut===cutMode);
@@ -2255,6 +2272,24 @@ function applyCompact(){
 }
 applyCompact(); new ResizeObserver(applyCompact).observe(document.getElementById("stage"));
 
+// Espace libre pour la maquette : sous le cartouche et les outils, au-dessus
+// de la ligne contextuelle et du dock. Mesure apres chaque changement de mise
+// en page ; le decalage suit un ressort, jamais par saut.
+const lens=new Spring(0, 0.45), lensK=new Spring(1, 0.45);
+function measureInsets(){
+  const H0=cv.clientHeight;
+  if(!(H0>80)) return;                         // page masquee : rien a mesurer
+  const top=Math.max($("bInfo").getBoundingClientRect().bottom, $("bMore").getBoundingClientRect().bottom);
+  let bot=document.querySelector(".bar").getBoundingClientRect().top;
+  if(!ctxEl.hidden){ const r=ctxEl.getBoundingClientRect(); if(r.height) bot=Math.min(bot, r.top); }
+  const cy=(top+bot)/2;
+  lens.to(2*(H0/2-cy)/H0);
+  // Et si l'espace libre est bas, on recule un peu pour que tout y tienne.
+  lensK.to(Math.max(1, 0.93*H0/Math.max(1, bot-top)));
+  if(!measureInsets.done){ lens.jump(lens.g); lensK.jump(lensK.g); measureInsets.done=true; }
+}
+new ResizeObserver(measureInsets).observe(document.querySelector(".dock"));
+new ResizeObserver(measureInsets).observe(document.getElementById("stage"));
 function uiTick(dt){
   if(!sheet.rest){ sheet.step(dt); inspApply();
     if(!inspOpenState && sheet.rest) insp.hidden=true; }
@@ -2392,7 +2427,7 @@ function frame(now){
       // Isometrie : projection parallele sur une direction oblique. Les
       // longueurs parallèles aux axes se mesurent directement.
       dist=fitDist()*zoom; eye=camPos();
-      const hz=RADIUS*zoom*1.05, hx=hz*((W/H)||1);
+      const hz=RADIUS*zoom*1.05*lensK.x, hx=hz*((W/H)||1);
       P=M4.ortho(-hx,hx,-hz,hz, 1, dist+RADIUS*3.5);
       V=M4.look(eye,target,[0,1,0]);
     }else if(orthoOn){
@@ -2401,7 +2436,7 @@ function frame(now){
       // En portrait, le plan pivote d'un quart de tour : un corps deux fois plus
       // long que large ne tient pas autrement sur un ecran de telephone.
       const f = PLAN_FIT[+etgSel.value], a = (W/H) || 1, deb = a < 1;
-      let hx = (deb ? f.d : f.w) * zoom, hz = (deb ? f.w : f.d) * zoom;
+      let hx = (deb ? f.d : f.w) * zoom * lensK.x, hz = (deb ? f.w : f.d) * zoom * lensK.x;
       if(hx / hz < a) hx = hz * a; else hz = hx / a;
       orthoUPP = 2*hz/(H||1); orthoPortrait = deb;
       // Plage de profondeur serree sur le batiment : etalee sur 400 m, elle
@@ -2415,6 +2450,13 @@ function frame(now){
       P=M4.persp(FOV, W/H||1, near, far);
       V=M4.look(eye,target,[0,1,0]);
     }
+  }
+  if(!rndOn && !walkOn && !tourOn){
+    // Decentrement optique : le centre de la vue est celui de l'espace libre
+    // entre le cartouche en haut et le dock en bas, non celui de l'ecran.
+    lens.step(dt); lensK.step(dt);
+    const s=lens.x;
+    if(Number.isFinite(s) && Math.abs(s)>1e-5){ P=P.slice(); if(P[11]===-1) P[9]-=s; else P[13]+=s; }
   }
   const MVP=M4.mul(P,V); lastMVP=MVP; lastP=P; lastV=V; lastEye=eye;
   planLabels(MVP);
