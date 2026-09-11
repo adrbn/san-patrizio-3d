@@ -397,6 +397,8 @@ input[type=range]::-moz-range-thumb{width:20px; height:20px; border-radius:50%; 
   <div class="menu glass pop" id="moreMenu" role="menu" aria-label="Affichage">
     <button type="button" class="menu__i" role="menuitemcheckbox" id="bOcc" aria-checked="true">
       <svg class="ico" viewBox="0 0 24 24"><path d="M4 20V9l8-5 8 5v11z"/><path d="M9.5 20v-6h5v6"/></svg><span>Éclairer les chambres habitées</span><i class="sw"></i></button>
+    <button type="button" class="menu__i" role="menuitemcheckbox" id="bSol" aria-checked="true">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M3 16l9 4.5 9-4.5-9-4.5z"/><path d="M7.5 13.8l9 4.5M16.5 13.8l-9 4.5"/></svg><span>Grille au sol</span><i class="sw"></i></button>
     <button type="button" class="menu__i" role="menuitemcheckbox" id="bGrid" aria-checked="false">
       <svg class="ico" viewBox="0 0 24 24"><path d="M3 17h18M3 11h18M7 5v14M17 5v14"/></svg><span>Cotes relevées</span><i class="sw"></i></button>
     <button type="button" class="menu__i" role="menuitemcheckbox" id="bClay" aria-checked="false">
@@ -527,7 +529,10 @@ const roomAttr = new Float32Array(roomIdx.length);
 for(let i=0;i<roomIdx.length;i++) roomAttr[i]=roomIdx[i];
 
 const BB = GEOM.bbox, SPANX=BB[3]-BB[0], SPANY=BB[4]-BB[1], SPANZ=BB[5]-BB[2];
-const TARGET = [0, SPANY*0.42, 0];
+// Pivot de l'orbite : le milieu du corps bati, et non celui de la boite
+// englobante, que le parvis et les degres allongent de trois metres cote rue.
+// Murs de Z -28,70 a +27,58 ; masse entre le sol et l'egout, faite a 21,50.
+const TARGET = [0, 9.6, -0.56];
 
 /* ── matrices ────────────────────────────────────────────── */
 const M4={
@@ -913,6 +918,19 @@ for(const [y] of LEVELS){
   gl_.push(-x,y,-z, x,y,-z,  x,y,-z, x,y,z,  x,y,z, -x,y,z,  -x,y,z, -x,y,-z);
 }
 const gGuide=mkLines(gl_,pLine);
+// Grille au sol : un carre de 80 m centre sur l'eglise, qui couvre l'ilot.
+// Metre fin, cinq metres appuyes, bordure nette. Posee 2 cm au-dessus du
+// parvis pour ne pas se battre avec lui dans le tampon de profondeur.
+const SOL_R=40, SOL_Y=0.36, SOL_C=[0, TARGET[2]];
+const solMin=[], solMaj=[], solBord=[];
+for(let i=-SOL_R;i<=SOL_R;i++){
+  const t=(i===-SOL_R||i===SOL_R)?solBord:(i%5===0?solMaj:solMin);
+  const x=SOL_C[0]+i, z=SOL_C[1]+i;
+  t.push(x,SOL_Y,SOL_C[1]-SOL_R, x,SOL_Y,SOL_C[1]+SOL_R);
+  t.push(SOL_C[0]-SOL_R,SOL_Y,z, SOL_C[0]+SOL_R,SOL_Y,z);
+}
+const gSolMin=mkLines(solMin,pLine), gSolMaj=mkLines(solMaj,pLine), gSolBord=mkLines(solBord,pLine);
+let showSol=true;
 
 /* ── texture de mosaique (photo reelle de la facade) ───────── */
 function makeTex(b64, fallback){
@@ -1701,8 +1719,8 @@ function fling(tEnd){
   if(walkOn) return;
   if(gmode==="orbit" && !orthoOn){
     const va=vx*0.32, ve=vy*0.26;
-    cam.az.v=va; cam.az.to(cam.az.x + project(va, 0.995), 0.7);
-    cam.el.v=ve; cam.el.to(clamp(cam.el.x + project(ve, 0.996), EL_MIN, EL_MAX), 0.55);
+    cam.az.v=va; cam.az.to(cam.az.x + project(va, 0.99), 0.55);
+    cam.el.v=ve*0.5; cam.el.to(clamp(cam.el.x + project(ve*0.5, 0.985), EL_MIN, EL_MAX), 0.45);
   }else if(gmode==="pan" || orthoOn){
     const w=panDelta(vx, vy);
     [cam.tx, cam.ty, cam.tz].forEach((s, i)=>{ s.v=w[i]; s.to(s.x + project(w[i], 0.995), 0.6); });
@@ -1745,8 +1763,9 @@ cv.addEventListener("pointermove", e=>{
   dragDist += Math.abs(dx)+Math.abs(dy);
   hist.push({x:e.clientX, y:e.clientY, t:e.timeStamp}); if(hist.length>8) hist.shift();
   if(walkOn){
-    // En balade on regarde dans la direction du geste, comme on tourne la tete.
-    wyaw += dx*0.20; wpitch=clamp(wpitch - dy*0.20, -85, 85);
+    // En balade on tire le decor sous le doigt, comme une photo panoramique :
+    // glisser a droite fait venir ce qui etait a gauche.
+    wyaw -= dx*0.20; wpitch=clamp(wpitch + dy*0.20, -85, 85);
     return;
   }
   if(dragDist>4 && VIEW_SEL){ VIEW_SEL=null; sync(); }
@@ -2096,6 +2115,7 @@ document.addEventListener("pointerdown", e=>{
 });
 bClay.addEventListener("click", ()=>{ clay=clay?0:1; sync(); });
 bGrid.addEventListener("click", ()=>{ showGrid=!showGrid; sync(); });
+$("bSol").addEventListener("click", ()=>{ showSol=!showSol; sync(); });
 bSpin.addEventListener("click", ()=>{ if(MODE!=="maquette") setMode("maquette"); spin=!spin; sync(); });
 bOcc.addEventListener("click", ()=>{ occOn=!occOn; sync(); });
 bLamp.addEventListener("click", ()=>{ inspKey==="lamps" ? inspHide() : showLamps(); });
@@ -2220,6 +2240,7 @@ addEventListener("keydown", e=>{
   if(m[k]) goto(m[k]);
   else if(k==="c"){ clay=clay?0:1; sync(); }
   else if(k==="g"){ showGrid=!showGrid; sync(); }
+  else if(k==="j"){ showSol=!showSol; sync(); }
   else if(k==="r"){ spin=!spin; sync(); }
   else if(k==="x") setMode(MODE==="coupe" ? "maquette" : "coupe");
   else if(k==="p") setMode(MODE==="plan" ? "maquette" : "plan");
@@ -2231,7 +2252,7 @@ addEventListener("keydown", e=>{
 
 let ctxShown=null;
 function sync(){
-  setChk(bClay, clay); setChk(bGrid, showGrid); setChk(bSpin, spin); setChk(bOcc, occOn);
+  setChk(bClay, clay); setChk(bGrid, showGrid); setChk($("bSol"), showSol); setChk(bSpin, spin); setChk(bOcc, occOn);
   radio(segModes, b=>b.dataset.mode===MODE);
   const cur=ctxEl.querySelector(`[data-ctx="${MODE}"]`);
   if(ctxShown!==MODE){
@@ -2465,17 +2486,26 @@ function frame(now){
   gl.enable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
   gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 
+  if(showSol && !orthoOn){
+    gl.useProgram(pLine);
+    gl.uniformMatrix4fv(gl.getUniformLocation(pLine,"uMVP"),false,new Float32Array(MVP));
+    const uC=gl.getUniformLocation(pLine,"uC");
+    const d=CLR[0]<0.02, c=d?1:0;
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+    gl.uniform4f(uC,c,c,c,d?0.05:0.07);
+    gl.bindVertexArray(gSolMin.vao); gl.drawArrays(gl.LINES,0,gSolMin.n);
+    gl.uniform4f(uC,c,c,c,d?0.11:0.15);
+    gl.bindVertexArray(gSolMaj.vao); gl.drawArrays(gl.LINES,0,gSolMaj.n);
+    gl.uniform4f(uC,c,c,c,d?0.24:0.30);
+    gl.bindVertexArray(gSolBord.vao); gl.drawArrays(gl.LINES,0,gSolBord.n);
+    gl.disable(gl.BLEND);
+  }
   if(showGrid){
     gl.useProgram(pLine);
     gl.uniformMatrix4fv(gl.getUniformLocation(pLine,"uMVP"),false,new Float32Array(MVP));
     const uC=gl.getUniformLocation(pLine,"uC");
-    const d=CLR[0]<0.02, base=d?[1,1,1]:[0,0,0];
     gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-    gl.uniform4f(uC,base[0],base[1],base[2],d?0.055:0.075);
-    gl.bindVertexArray(gMinor.vao); gl.drawArrays(gl.LINES,0,gMinor.n);
-    gl.uniform4f(uC,base[0],base[1],base[2],d?0.13:0.16);
-    gl.bindVertexArray(gMajor.vao); gl.drawArrays(gl.LINES,0,gMajor.n);
-    const a=toLin(getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()||"#A34B33");
+    const a=toLin(getComputedStyle(document.documentElement).getPropertyValue("--tint").trim()||"#A8492F");
     gl.uniform4f(uC,a[0],a[1],a[2],0.85);
     gl.bindVertexArray(gGuide.vao); gl.drawArrays(gl.LINES,0,gGuide.n);
     gl.disable(gl.BLEND);
