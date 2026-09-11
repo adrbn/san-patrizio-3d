@@ -1032,34 +1032,36 @@ for(let i=0, st=3*Math.max(1, Math.floor(positions.length/3/2500)); i<positions.
   if(positions[i+1]>0.40) CORNERS.push([positions[i], positions[i+1], positions[i+2]]);
 let insetTop=0, insetBot=0;
 function fitView(az0, el0, iso=false){
+  // Le pivot reste au centre du bati : c'est autour de lui que l'on tourne,
+  // et un pivot deplace pour « centrer l'image » faisait partir la maquette
+  // de cote des le premier geste. On ne regle donc que la distance, en
+  // cadrant symetriquement autour de ce centre.
   const a=az0*Math.PI/180, e=el0*Math.PI/180;
   const back=[Math.cos(e)*Math.cos(a), Math.sin(e), Math.cos(e)*Math.sin(a)];
   const f=back.map(v=>-v), r=norm(cross(f,[0,1,0])), u=cross(r,f);
   const Hs=cv.clientHeight||H||1, Ws=cv.clientWidth||W||1, asp=Ws/Hs;
   const free=(insetBot>insetTop+40) ? (insetBot-insetTop) : Hs*0.8;
-  const avY=free/Hs*2*0.88, avX=2*0.90;
+  const avY=free/Hs*0.90, avX=0.92;              // demi-etendues utiles, en NDC
   const ty=Math.tan(ORB_FOV/2), tx=ty*asp;
-  let t=[...TARGET], d=fitDist()*0.8, hz=RADIUS;
-  for(let it=0; it<(iso?3:40); it++){
-    const eye=t.map((v,i)=>v+back[i]*d);
-    let x0=1e9, x1=-1e9, y0=1e9, y1=-1e9, zs=0;
+  let d=fitDist();
+  for(let it=0; it<30; it++){
+    const eye=TARGET.map((v,i)=>v+back[i]*d);
+    let mx=0, my=0, zmin=1e9, zs=0;
     for(const c of CORNERS){
       const q=sub(c,eye), z=dot(q,f), X=dot(q,r), Y=dot(q,u);
-      const px=iso ? X : X/(z*tx), py=iso ? Y : Y/(z*ty);
-      x0=Math.min(x0,px); x1=Math.max(x1,px); y0=Math.min(y0,py); y1=Math.max(y1,py); zs+=z;
+      zmin=Math.min(zmin,z); zs+=z;
+      mx=Math.max(mx, Math.abs(iso ? X : X/(z*tx)));
+      my=Math.max(my, Math.abs(iso ? Y : Y/(z*ty)));
     }
-    const cx=(x0+x1)/2, cy=(y0+y1)/2, zm=zs/CORNERS.length;
-    if(iso){
-      t=t.map((v,i)=>v+r[i]*cx+u[i]*cy);
-      hz=Math.max((y1-y0)/avY, (x1-x0)/(avX*asp));
-      continue;
-    }
-    t=t.map((v,i)=>v+r[i]*cx*zm*tx+u[i]*cy*zm*ty);
-    const k=Math.max((x1-x0)/avX, (y1-y0)/avY);
-    d=Math.max(5, d+zm*(k-1)*0.8);
+    if(iso) return {az:az0, el:el0, target:[...TARGET],
+                    zoom:Math.max(my/avY, mx/(avX*asp))/(RADIUS*1.05)};
+    if(zmin<2){ d*=1.4; continue; }             // un point derriere l'oeil : on recule
+    const k=Math.max(mx/avX, my/avY);
+    const nd=d+(zs/CORNERS.length)*(k-1)*0.8;
+    if(Math.abs(nd-d)<0.01){ d=nd; break; }
+    d=Math.max(RADIUS*0.6, nd);
   }
-  const zoom = iso ? hz/(RADIUS*1.05) : d/fitDist();
-  return {az:az0, el:el0, zoom, target:t};
+  return {az:az0, el:el0, zoom:d/fitDist(), target:[...TARGET]};
 }
 const homeView=()=>{ const v=VIEWS[VIEW_SEL && VIEWS[VIEW_SEL] ? VIEW_SEL : "axo"];
   return fitView(v.az, v.el, VIEW_SEL==="iso"); };
